@@ -18,5 +18,5 @@
       "unit": "USD per barrel"
     }
   },
-  "boundary": "Source-reported same-date returns only. No off-chain history is stored, and the reference cutoffs are not synchronized to UTC on-chain pool candles."
+  "boundary": "Source-reported same-date returns only. No off-chain history is stored, and the reference cutoffs are not synchronized to UTC on-chain pool candles. WTI_FRONT_MONTH is a benchmark selected for this event comparison; the project does not establish that WTIC is redeemable against or designed to track that exact futures series."
 }

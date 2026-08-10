@@ -11,7 +11,7 @@ use super::shock::AssetShockReport;
 use super::stats::ZScoreUnavailable;
 use crate::coverage::format_evidence_boundary;
 use crate::measure::divergence::DivergenceSummary;
-use crate::measure::passthrough::PassThroughSummary;
+use crate::measure::response_gap::ResponseGapSummary;
 
 fn fmt_opt(value: Option<Decimal>) -> String {
     match value {
@@ -146,11 +146,11 @@ pub fn format_divergence_summary(summary: &DivergenceSummary) -> String {
     out
 }
 
-pub fn format_passthrough_summary(summary: &PassThroughSummary) -> String {
+pub fn format_response_gap_summary(summary: &ResponseGapSummary) -> String {
     let mut out = String::new();
     let _ = writeln!(
         out,
-        "pass-through: {} vs {}",
+        "response gap: {} vs {}",
         summary.asset_key, summary.reference_key
     );
     let _ = writeln!(out, "  event day       : {}", summary.event_day);

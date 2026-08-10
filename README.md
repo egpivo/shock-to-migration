@@ -31,7 +31,7 @@ cargo run -p shocktrace-cli -- analyze projects/spacex --format json
 cargo run -p shocktrace-cli -- validate projects/paxg_wtic_reference_2026_07_08
 cargo run -p shocktrace-cli -- measure shock projects/paxg_wtic_reference_2026_07_08 --asset PAXG --format summary
 cargo run -p shocktrace-cli -- measure shock projects/paxg_wtic_reference_2026_07_08 --asset WTIC --format summary
-cargo run -p shocktrace-cli -- measure passthrough projects/paxg_wtic_reference_2026_07_08 \
+cargo run -p shocktrace-cli -- measure response-gap projects/paxg_wtic_reference_2026_07_08 \
   --asset PAXG --reference GOLD_SPOT --format summary
 cargo run -p shocktrace-cli -- measure divergence projects/paxg_wtic_reference_2026_07_08 \
   --asset-a PAXG --asset-b WTIC --format summary
@@ -43,7 +43,7 @@ Exit codes: `0` on successful measurement **or** structured absence (`not_declar
 
 `respond` / `flows` / `analyze` each print an evidence boundary for the sections they show. A number without coverage context is incomplete output.
 
-Real cases live under `projects/`: SpaceX (linked mint-pair flow) and `paxg_wtic_reference_2026_07_08` (on-chain PAXG + WTIC public pools for 2026-07-08). The latter stores two source-reported event-day commodity returns for pass-through comparison, but no Yahoo/TradFi price history. Fixtures under `tests/` remain architecture probes.
+Real cases live under `projects/`: SpaceX (linked mint-pair flow) and `paxg_wtic_reference_2026_07_08` (on-chain PAXG + WTIC public pools for 2026-07-08). The latter stores two source-reported event-day commodity returns for a reference-to-token response comparison, but no Yahoo/TradFi price history. Fixtures under `tests/` remain architecture probes.
 
 Claim-gate for article numbers: `artifacts/claim_gate.csv` (verifier: `artifacts/articles/2026-09-01/verify_claims.py`).
 

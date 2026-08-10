@@ -44,10 +44,10 @@ def run_json(args: list[str]) -> dict:
 def main() -> None:
     paxg = run_json(["measure", "shock", PROJECT, "--asset", "PAXG"])
     wtic = run_json(["measure", "shock", PROJECT, "--asset", "WTIC"])
-    paxg_pass = run_json(
+    paxg_gap = run_json(
         [
             "measure",
-            "passthrough",
+            "response-gap",
             PROJECT,
             "--asset",
             "PAXG",
@@ -55,10 +55,10 @@ def main() -> None:
             "GOLD_SPOT",
         ]
     )
-    wtic_pass = run_json(
+    wtic_gap = run_json(
         [
             "measure",
-            "passthrough",
+            "response-gap",
             PROJECT,
             "--asset",
             "WTIC",
@@ -124,16 +124,16 @@ def main() -> None:
         "article_2026_09_01_wtic_z": Decimal(wtic["shock"]["z_score"]),
         "article_2026_09_01_wtic_baseline_n": Decimal(wtic["shock"]["baseline_n"]),
         "article_2026_09_01_gold_reference_return": Decimal(
-            paxg_pass["reference_return"]
+            paxg_gap["reference_return"]
         ),
-        "article_2026_09_01_paxg_passthrough_gap": Decimal(
-            paxg_pass["response_gap"]
+        "article_2026_09_01_paxg_response_gap": Decimal(
+            paxg_gap["response_gap"]
         ),
         "article_2026_09_01_wti_reference_return": Decimal(
-            wtic_pass["reference_return"]
+            wtic_gap["reference_return"]
         ),
-        "article_2026_09_01_wtic_passthrough_gap": Decimal(
-            wtic_pass["response_gap"]
+        "article_2026_09_01_wtic_response_gap": Decimal(
+            wtic_gap["response_gap"]
         ),
         "article_2026_09_01_div_paxg_wtic": Decimal(div["event_divergence"]),
         "article_2026_09_01_div_paxg_wtic_z": Decimal(div["z_score"]),

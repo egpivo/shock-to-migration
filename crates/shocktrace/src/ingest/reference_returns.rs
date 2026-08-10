@@ -1,4 +1,4 @@
-//! Frozen event-day reference returns used by `measure passthrough`.
+//! Frozen event-day reference returns used by `measure response-gap`.
 //!
 //! These are source-reported comparison points, not full price tapes. Each
 //! row binds one named reference to one declared token asset and records the

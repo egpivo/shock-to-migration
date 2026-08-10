@@ -36,12 +36,12 @@ pub use identity::{
     AssetId, AssetKey, AssetLocator, CanonicalAsset, ChainId, ProductKind, VenueId,
 };
 pub use measure::{
-    account_activity_anomaly, account_divergence, account_passthrough, account_shock_score,
+    account_activity_anomaly, account_divergence, account_response_gap, account_shock_score,
     cumulative_return_from_event, daily_returns, format_divergence_summary,
-    format_passthrough_summary, format_shock_report_summary, load_asset_shock_report,
-    load_divergence_summary, load_passthrough_summary, ActivityAnomaly, AssetShockReport,
+    format_response_gap_summary, format_shock_report_summary, load_asset_shock_report,
+    load_divergence_summary, load_response_gap_summary, ActivityAnomaly, AssetShockReport,
     DailyReturn, DivergenceSummary, HorizonReturn, HorizonReturns, MeasureError,
-    MeasureProjectError, PassThroughSummary, ShockScore, ZScoreUnavailable,
+    MeasureProjectError, ResponseGapSummary, ShockScore, ZScoreUnavailable,
     ADEQUATE_BASELINE_OBSERVATIONS, MIN_BASELINE_OBSERVATIONS,
 };
 pub use project::{

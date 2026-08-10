@@ -7,8 +7,8 @@ use std::process::ExitCode;
 use clap::{Parser, Subcommand, ValueEnum};
 use shocktrace::load_project;
 use shocktrace::measure::{
-    format_divergence_summary, format_passthrough_summary, format_shock_report_summary,
-    load_asset_shock_report, load_divergence_summary, load_passthrough_summary,
+    format_divergence_summary, format_response_gap_summary, format_shock_report_summary,
+    load_asset_shock_report, load_divergence_summary, load_response_gap_summary,
 };
 use shocktrace::report::{
     analyze_project, compare_projects, flows_view, format_compare_table, format_flows_summary,
@@ -83,7 +83,7 @@ enum MeasureCommands {
         format: OutputFormat,
     },
     /// Same-date token return minus a frozen source-reported reference return.
-    Passthrough {
+    ResponseGap {
         project: PathBuf,
         #[arg(long)]
         asset: String,
@@ -238,7 +238,7 @@ fn run_measure(command: MeasureCommands) -> Result<(), Box<dyn std::error::Error
                 OutputFormat::Json => println!("{}", serde_json::to_string_pretty(&summary)?),
             }
         }
-        MeasureCommands::Passthrough {
+        MeasureCommands::ResponseGap {
             project,
             asset,
             reference,
@@ -246,14 +246,14 @@ fn run_measure(command: MeasureCommands) -> Result<(), Box<dyn std::error::Error
             format,
         } => {
             let cfg = load_project(&project)?;
-            let summary = load_passthrough_summary(
+            let summary = load_response_gap_summary(
                 &cfg,
                 &AssetKey::new(asset),
                 &reference,
                 event_window.as_deref(),
             )?;
             match format {
-                OutputFormat::Summary => println!("{}", format_passthrough_summary(&summary)),
+                OutputFormat::Summary => println!("{}", format_response_gap_summary(&summary)),
                 OutputFormat::Json => println!("{}", serde_json::to_string_pretty(&summary)?),
             }
         }

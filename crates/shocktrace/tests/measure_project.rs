@@ -7,7 +7,8 @@ use std::fs;
 use std::path::PathBuf;
 
 use shocktrace::measure::{
-    load_asset_shock_report, load_divergence_summary, load_passthrough_summary, MeasureProjectError,
+    load_asset_shock_report, load_divergence_summary, load_response_gap_summary,
+    MeasureProjectError,
 };
 use shocktrace::{load_project, AssetKey, MeasureError};
 
@@ -145,11 +146,11 @@ fn divergence_report_known_fixture_via_project_loader() {
 }
 
 #[test]
-fn passthrough_report_known_fixture_via_project_loader() {
+fn response_gap_report_known_fixture_via_project_loader() {
     let dir = write_fixture_project();
     let cfg = load_project(&dir).unwrap();
 
-    let summary = load_passthrough_summary(&cfg, &AssetKey::new("A"), "A_REF", None).unwrap();
+    let summary = load_response_gap_summary(&cfg, &AssetKey::new("A"), "A_REF", None).unwrap();
 
     assert_eq!(summary.reference_return, "0.08".parse().unwrap());
     assert_eq!(summary.token_return, Some("0.10".parse().unwrap()));

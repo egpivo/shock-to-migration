@@ -1,7 +1,7 @@
 # Source: projects/paxg_wtic_reference_2026_07_08
 
 **Primary empirical objects:** on-chain RWA tokens **PAXG** and **WTIC** only.
-The project also freezes two source-reported event-day commodity returns for a same-date pass-through comparison. It does **not** store off-chain price history.
+The project also freezes two source-reported event-day commodity returns for a same-date response comparison. It does **not** store off-chain price history.
 
 ## Canonical identities
 
@@ -36,13 +36,16 @@ Independently verified on-chain: name, symbol, decimals, bytecode present, Gecko
 
 - `event.id = us_iran_renewed_escalation_2026_07_08`
 - Renewed U.S.–Iran escalation after an interim truce faltered — **not** war onset.
+- `event.timestamp = 2026-07-08T00:00:00Z` anchors the project date; it is not an event-time synchronization point.
 - After WTIC deployment (pool created 2026-03-11), so a paired on-chain case is feasible.
 
 ## Event-day reference observations
 
 Reuters' 8 July cross-market close report states that spot gold fell `0.52%` to `$4,084.19` per ounce and front-month WTI rose `4.4%` to `$73.52` per barrel. These reported returns are frozen in `data/reference_returns.csv` as `GOLD_SPOT` and `WTI_FRONT_MONTH`.
 
-They are comparison points, not additional research subjects. Their cutoffs are not synchronized to the UTC pool candles, so `measure passthrough` reports a same-date response gap—not beta, causal transmission, or a synchronized tracking error. Source metadata lives in `data/REFERENCE_META.json`.
+For WTIC, `WTI_FRONT_MONTH` is the commodity benchmark chosen for this event comparison. The project does not establish that WTIC is contractually redeemable against, or designed to track, that exact futures series.
+
+They are comparison points, not additional research subjects. Their cutoffs are not synchronized to the UTC pool candles, so `measure response-gap` reports a same-date response gap—not beta, causal transmission, a pass-through coefficient, or a synchronized tracking error. Source metadata lives in `data/REFERENCE_META.json`.
 
 ## Feasibility gates (passed before drafting)
 

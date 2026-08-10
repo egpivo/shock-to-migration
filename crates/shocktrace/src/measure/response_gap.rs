@@ -19,7 +19,7 @@ use crate::measure::returns::daily_returns;
 use crate::project::ProjectConfig;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub struct PassThroughSummary {
+pub struct ResponseGapSummary {
     pub asset_key: AssetKey,
     pub reference_key: String,
     pub event_day: NaiveDate,
@@ -36,12 +36,12 @@ pub struct PassThroughSummary {
     pub boundary: EvidenceBoundary,
 }
 
-const PASSTHROUGH_INTERPRETATION_BOUNDARY: &str = "Pass-through gap is the token's same-date daily return minus a frozen source-reported reference return. It is not a synchronized intraday comparison, beta, tracking-error model, or causal transmission estimate.";
+const RESPONSE_GAP_INTERPRETATION_BOUNDARY: &str = "Response gap is the token's same-date daily return minus a frozen source-reported reference return. It is not a synchronized intraday comparison, beta, tracking-error model, pass-through coefficient, or causal transmission estimate.";
 
-pub fn account_passthrough(
+pub fn account_response_gap(
     reference: ReferenceReturnObservation,
     token_return: Option<Decimal>,
-) -> PassThroughSummary {
+) -> ResponseGapSummary {
     let response_gap = token_return.map(|value| value - reference.reference_return);
     let direction_match = token_return.and_then(|value| {
         if value == Decimal::ZERO || reference.reference_return == Decimal::ZERO {
@@ -54,7 +54,7 @@ pub fn account_passthrough(
         }
     });
 
-    PassThroughSummary {
+    ResponseGapSummary {
         asset_key: reference.asset_key,
         reference_key: reference.reference_key,
         event_day: reference.day,
@@ -65,17 +65,17 @@ pub fn account_passthrough(
         source_label: reference.source_label,
         source_url: reference.source_url,
         reference_cutoff: reference.cutoff,
-        interpretation_boundary: PASSTHROUGH_INTERPRETATION_BOUNDARY,
+        interpretation_boundary: RESPONSE_GAP_INTERPRETATION_BOUNDARY,
         boundary: EvidenceBoundary::default(),
     }
 }
 
-pub fn load_passthrough_summary(
+pub fn load_response_gap_summary(
     cfg: &ProjectConfig,
     asset: &AssetKey,
     reference_key: &str,
     event_window_override: Option<&str>,
-) -> Result<PassThroughSummary, MeasureProjectError> {
+) -> Result<ResponseGapSummary, MeasureProjectError> {
     let baseline = resolve_baseline_window(cfg, None)?;
     let event_window = resolve_event_window(cfg, event_window_override, &baseline.name)?;
     let references = load_reference_rows(cfg)?;
@@ -104,7 +104,7 @@ pub fn load_passthrough_summary(
         .find(|row| row.day == reference.day)
         .map(|row| row.value);
 
-    let mut summary = account_passthrough(reference, token_return);
+    let mut summary = account_response_gap(reference, token_return);
     summary.boundary = build_measure_boundary(
         cfg,
         &[asset],
@@ -147,7 +147,7 @@ mod tests {
 
     #[test]
     fn gap_is_token_minus_reference() {
-        let summary = account_passthrough(
+        let summary = account_response_gap(
             reference("0.044"),
             Some(Decimal::from_str("0.0389").unwrap()),
         );
@@ -160,7 +160,7 @@ mod tests {
 
     #[test]
     fn missing_token_return_stays_missing() {
-        let summary = account_passthrough(reference("-0.0052"), None);
+        let summary = account_response_gap(reference("-0.0052"), None);
         assert!(summary.response_gap.is_none());
         assert!(summary.direction_match.is_none());
     }
