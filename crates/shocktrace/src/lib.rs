@@ -9,6 +9,7 @@
 pub mod control;
 pub mod coverage;
 pub mod event;
+pub mod evidence;
 pub mod flow;
 pub mod identity;
 pub mod ingest;
@@ -16,11 +17,13 @@ pub mod observe;
 pub mod project;
 pub mod provenance;
 pub mod report;
+pub mod response;
 pub mod route;
 
 pub use control::{ControlAsset, ControlRelation};
-pub use coverage::{CoverageGap, EvidenceBoundary, MissingKind};
+pub use coverage::{CoverageGap, EvidenceBoundary, GapSource, MissingKind};
 pub use event::{Event, EventWindow};
+pub use evidence::EvidenceSection;
 pub use flow::{
     account_directional_flows, AttributionMethod, DirectionalFlowObservation, FlowSeriesSummary,
     FlowUnit, Quantity,
@@ -28,9 +31,14 @@ pub use flow::{
 pub use identity::{
     AssetId, AssetKey, AssetLocator, CanonicalAsset, ChainId, ProductKind, VenueId,
 };
-pub use project::{load_project, validate_project, ProjectConfig, ProjectError};
+pub use project::{load_project, validate_project, ProjectConfig, ProjectError, ResponseConfig};
 pub use provenance::{hash_bytes, hash_file, ProvenanceRecord};
-pub use report::{analyze_project, AnalysisResult};
+pub use report::{
+    analyze_project, flows_view, format_flows_summary, format_respond_summary, format_summary,
+    ladder_status, respond_view, AnalysisResult, LadderRow, SectionView, FLOW_METRIC_ID,
+    RESPONSE_METRIC_ID,
+};
+pub use response::{account_market_response, ResponseObservation, ResponseSeriesSummary};
 pub use route::{
     DenominatorPolicy, DocStatus, ExecStatus, FlowUnitConfig, LinkageClass, MeasuredLeg,
     ObservedStatus, Restriction, Route, RouteEvidence, RouteMeasurement, RouteMechanism,

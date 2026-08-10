@@ -1,4 +1,4 @@
-//! Project configuration load and validation (schema v2: per-route measurement).
+//! Project configuration load and validation (schema v3: optional routes + response).
 
 use std::collections::HashSet;
 use std::fs;
@@ -18,7 +18,7 @@ use crate::route::{
     ObservedStatus, Restriction, Route, RouteEvidence, RouteMeasurement, RouteMechanism,
 };
 
-pub const SCHEMA_VERSION: u32 = 2;
+pub const SCHEMA_VERSION: u32 = 3;
 
 #[derive(Debug, Error)]
 pub enum ProjectError {
@@ -29,9 +29,9 @@ pub enum ProjectError {
     #[error("validation failed: {0}")]
     Validation(String),
     #[error(
-        "unsupported schema_version {0}; expected {SCHEMA_VERSION} (v1 global [flow] removed — use routes.measurement)"
+        "unsupported schema_version {got}; expected {SCHEMA_VERSION} (v3: optional routes + market response)"
     )]
-    UnsupportedSchema(u32),
+    UnsupportedSchema { got: u32 },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -42,19 +42,28 @@ pub struct ProjectConfig {
     pub event: Event,
     pub windows: Vec<EventWindow>,
     pub assets: Vec<CanonicalAsset>,
+    /// May be empty for response-only projects.
     pub routes: Vec<Route>,
     pub route_evidence: Vec<RouteEvidence>,
     pub controls: Vec<ControlAsset>,
     pub coverage_declared: Vec<CoverageGap>,
+    pub response: Option<ResponseConfig>,
     pub inputs: InputPaths,
     #[serde(skip)]
     pub root: PathBuf,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ResponseConfig {
+    /// Window name used as volume baseline for `baseline_normalized_volume`.
+    pub baseline_window: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct InputPaths {
-    pub flows: String,
+    pub flows: Option<String>,
     pub supply: Option<String>,
+    pub response: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -65,16 +74,18 @@ struct RawProject {
     event: RawEvent,
     windows: Vec<RawWindow>,
     assets: Vec<RawAsset>,
+    #[serde(default)]
     routes: Vec<RawRoute>,
     #[serde(default)]
     route_evidence: Vec<RawRouteEvidence>,
-    /// Removed in schema v2. Presence is a hard error with a migration hint.
     #[serde(default)]
     flow: Option<toml::Value>,
     #[serde(default)]
     controls: Vec<RawControl>,
     #[serde(default)]
     coverage_declared: Vec<RawCoverage>,
+    #[serde(default)]
+    response: Option<RawResponse>,
     inputs: RawInputs,
 }
 
@@ -122,6 +133,10 @@ enum RawLocator {
     Cex {
         cex_venue: String,
         cex_symbol: String,
+    },
+    MarketInstrument {
+        venue: String,
+        instrument_id: String,
     },
     Opaque {
         opaque_id: String,
@@ -186,9 +201,18 @@ struct RawCoverage {
 }
 
 #[derive(Debug, Deserialize)]
+struct RawResponse {
+    baseline_window: String,
+}
+
+#[derive(Debug, Deserialize)]
 struct RawInputs {
-    flows: String,
+    #[serde(default)]
+    flows: Option<String>,
+    #[serde(default)]
     supply: Option<String>,
+    #[serde(default)]
+    response: Option<String>,
 }
 
 /// Load and validate a project directory containing `project.toml`.
@@ -198,12 +222,13 @@ pub fn load_project(project_dir: impl AsRef<Path>) -> Result<ProjectConfig, Proj
     let text = fs::read_to_string(&config_path)?;
     let raw: RawProject = toml::from_str(&text)?;
     if raw.schema_version != SCHEMA_VERSION {
-        return Err(ProjectError::UnsupportedSchema(raw.schema_version));
+        return Err(ProjectError::UnsupportedSchema {
+            got: raw.schema_version,
+        });
     }
     if raw.flow.is_some() {
         return Err(ProjectError::Validation(
-            "global [flow] was removed in schema v2; declare measurement on each [[routes]] entry"
-                .into(),
+            "global [flow] was removed; declare measurement on each [[routes]] entry".into(),
         ));
     }
     let cfg = map_raw(raw, root)?;
@@ -225,6 +250,13 @@ fn map_raw(raw: RawProject, root: PathBuf) -> Result<ProjectConfig, ProjectError
                 } => AssetLocator::CexSymbol {
                     venue: cex_venue,
                     symbol: cex_symbol,
+                },
+                RawLocator::MarketInstrument {
+                    venue,
+                    instrument_id,
+                } => AssetLocator::MarketInstrument {
+                    venue,
+                    instrument_id,
                 },
                 RawLocator::Opaque { opaque_id } => AssetLocator::Opaque { id: opaque_id },
             };
@@ -289,12 +321,12 @@ fn map_raw(raw: RawProject, root: PathBuf) -> Result<ProjectConfig, ProjectError
     let coverage_declared = raw
         .coverage_declared
         .into_iter()
-        .map(|c| CoverageGap {
-            kind: parse_missing_kind(&c.kind),
-            scope: c.scope,
-            reason: c.reason,
-        })
+        .map(|c| CoverageGap::new(parse_missing_kind(&c.kind), c.scope, c.reason))
         .collect();
+
+    let response = raw.response.map(|r| ResponseConfig {
+        baseline_window: r.baseline_window,
+    });
 
     Ok(ProjectConfig {
         schema_version: raw.schema_version,
@@ -319,9 +351,11 @@ fn map_raw(raw: RawProject, root: PathBuf) -> Result<ProjectConfig, ProjectError
         route_evidence,
         controls,
         coverage_declared,
+        response,
         inputs: InputPaths {
             flows: raw.inputs.flows,
             supply: raw.inputs.supply,
+            response: raw.inputs.response,
         },
         root,
     })
@@ -413,6 +447,12 @@ pub fn validate_project(cfg: &ProjectConfig) -> Result<(), ProjectError> {
         }
     }
 
+    if cfg.routes.is_empty() && cfg.inputs.response.is_none() {
+        return Err(ProjectError::Validation(
+            "project must declare [[routes]] (with flows) and/or inputs.response".into(),
+        ));
+    }
+
     let mut route_ids = HashSet::new();
     let mut any_denom = false;
 
@@ -448,6 +488,25 @@ pub fn validate_project(cfg: &ProjectConfig) -> Result<(), ProjectError> {
         }
     }
 
+    if !cfg.routes.is_empty() {
+        match &cfg.inputs.flows {
+            Some(rel) => {
+                let flows_path = cfg.root.join(rel);
+                if !flows_path.is_file() {
+                    return Err(ProjectError::Validation(format!(
+                        "flows input not found: {}",
+                        flows_path.display()
+                    )));
+                }
+            }
+            None => {
+                return Err(ProjectError::Validation(
+                    "declared routes require inputs.flows".into(),
+                ));
+            }
+        }
+    }
+
     if any_denom && cfg.inputs.supply.is_none() {
         return Err(ProjectError::Validation(
             "at least one route denominator requires inputs.supply".into(),
@@ -463,6 +522,35 @@ pub fn validate_project(cfg: &ProjectConfig) -> Result<(), ProjectError> {
         }
     }
 
+    if let Some(resp) = &cfg.response {
+        if !window_names.contains(&resp.baseline_window) {
+            return Err(ProjectError::Validation(format!(
+                "response.baseline_window '{}' is not a declared window",
+                resp.baseline_window
+            )));
+        }
+        if cfg.inputs.response.is_none() {
+            return Err(ProjectError::Validation(
+                "[response] requires inputs.response".into(),
+            ));
+        }
+    }
+
+    if let Some(rel) = &cfg.inputs.response {
+        let path = cfg.root.join(rel);
+        if !path.is_file() {
+            return Err(ProjectError::Validation(format!(
+                "response input not found: {}",
+                path.display()
+            )));
+        }
+        if cfg.response.is_none() {
+            return Err(ProjectError::Validation(
+                "inputs.response requires a [response] table (baseline_window)".into(),
+            ));
+        }
+    }
+
     for control in &cfg.controls {
         if !keys.contains(&control.key) {
             return Err(ProjectError::Validation(format!(
@@ -472,13 +560,6 @@ pub fn validate_project(cfg: &ProjectConfig) -> Result<(), ProjectError> {
         }
     }
 
-    let flows_path = cfg.root.join(&cfg.inputs.flows);
-    if !flows_path.is_file() {
-        return Err(ProjectError::Validation(format!(
-            "flows input not found: {}",
-            flows_path.display()
-        )));
-    }
     if let Some(supply) = &cfg.inputs.supply {
         let supply_path = cfg.root.join(supply);
         if !supply_path.is_file() {
@@ -492,7 +573,6 @@ pub fn validate_project(cfg: &ProjectConfig) -> Result<(), ProjectError> {
     Ok(())
 }
 
-/// Bind route.source/destination ↔ measured_leg ↔ unit_asset ↔ denominator.
 fn validate_route_measurement(route: &Route, keys: &HashSet<AssetKey>) -> Result<(), ProjectError> {
     let m = &route.measurement;
 
@@ -674,14 +754,12 @@ mod tests {
     fn loads_and_validates_synthetic_project() {
         let cfg = load_project(synthetic_root()).unwrap();
         assert_eq!(cfg.project_id, "synthetic_conduit");
-        assert_eq!(cfg.schema_version, 2);
-        assert_eq!(cfg.assets.len(), 3);
+        assert_eq!(cfg.schema_version, 3);
         assert_eq!(cfg.routes.len(), 1);
         assert_eq!(
             cfg.routes[0].measurement.attribution,
             AttributionMethod::Fixture
         );
-        assert_eq!(cfg.routes[0].measurement.measured_leg, MeasuredLeg::Source);
     }
 
     #[test]
@@ -689,6 +767,41 @@ mod tests {
         let mut cfg = load_project(synthetic_root()).unwrap();
         cfg.assets[1].display_symbol = cfg.assets[0].display_symbol.clone();
         validate_project(&cfg).unwrap();
+    }
+
+    #[test]
+    fn same_display_symbol_different_venues_are_distinct_ids() {
+        let a = CanonicalAsset {
+            key: AssetKey::new("g1"),
+            id: AssetId {
+                chain: ChainId::new("tradfi"),
+                locator: AssetLocator::MarketInstrument {
+                    venue: "COMEX".into(),
+                    instrument_id: "GC_FRONT".into(),
+                },
+            },
+            display_symbol: "GC".into(),
+            issuer: None,
+            product_kind: ProductKind::Unknown,
+            underlying_ref: Some("gold".into()),
+            role: None,
+        };
+        let b = CanonicalAsset {
+            key: AssetKey::new("g2"),
+            id: AssetId {
+                chain: ChainId::new("tradfi"),
+                locator: AssetLocator::MarketInstrument {
+                    venue: "NYSE".into(),
+                    instrument_id: "GLD".into(),
+                },
+            },
+            display_symbol: "GC".into(),
+            issuer: None,
+            product_kind: ProductKind::Unknown,
+            underlying_ref: Some("gold".into()),
+            role: None,
+        };
+        assert_ne!(a.id, b.id);
     }
 
     #[test]
@@ -707,7 +820,6 @@ mod tests {
     #[test]
     fn rejects_unit_asset_not_equal_measured_leg() {
         let mut cfg = load_project(synthetic_root()).unwrap();
-        // measured_leg = source (A), but unit_asset forced to B
         cfg.routes[0].measurement.unit_asset = AssetKey::new("B");
         cfg.routes[0].measurement.denominator = Some(DenominatorPolicy::SupplySnapshot {
             asset: AssetKey::new("B"),

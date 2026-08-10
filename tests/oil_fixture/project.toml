@@ -1,0 +1,44 @@
+schema_version = 3
+project_id = "oil_fixture"
+name = "Oil response-only fixture (synthetic sample, not historical fact)"
+
+[event]
+id = "oil_shock_synth"
+name = "Synthetic oil market shock"
+timestamp = "2026-06-12T14:00:00Z"
+
+[[windows]]
+name = "baseline"
+start = "2026-06-01"
+end = "2026-06-05"
+
+[[windows]]
+name = "event"
+start = "2026-06-12"
+end = "2026-06-16"
+
+[[assets]]
+key = "CL"
+chain = "tradfi"
+venue = "NYMEX"
+instrument_id = "CL_FRONT_SYNTH"
+display_symbol = "CL"
+product_kind = "unknown"
+underlying_ref = "oil"
+role = "primary"
+
+[[coverage_declared]]
+kind = "route_attribution"
+scope = "oil_fixture"
+reason = "No linked capital-migration route is declared or observable in this fixture"
+
+[[coverage_declared]]
+kind = "trader_intent"
+scope = "CL"
+reason = "Price/volume series do not identify trader intent or source of capital"
+
+[response]
+baseline_window = "baseline"
+
+[inputs]
+response = "data/response_daily.csv"

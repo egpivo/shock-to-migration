@@ -189,28 +189,38 @@ pub fn account_directional_flows(
 
     let mut gross_a_to_b_total = Quantity::zero();
     let mut gross_b_to_a_total = Quantity::zero();
-    let mut cumulative = Decimal::ZERO;
     let mut cumulative_path = Vec::with_capacity(observations.len());
     let mut sign_change_days = 0u32;
     let mut prev_sign: Option<i8> = None;
     let mut days_cumulative_negative = 0u32;
-    let mut peak: Option<Decimal> = None;
-    let mut trough: Option<Decimal> = None;
 
-    for obs in &observations {
+    // Initialize peak/trough from the first day's cumulative (series is non-empty).
+    let first = &observations[0];
+    gross_a_to_b_total = gross_a_to_b_total.checked_add(first.gross_a_to_b)?;
+    gross_b_to_a_total = gross_b_to_a_total.checked_add(first.gross_b_to_a)?;
+    let mut cumulative = first.gross_a_to_b.as_decimal() - first.gross_b_to_a.as_decimal();
+    let mut peak = cumulative;
+    let mut trough = cumulative;
+    if cumulative < Decimal::ZERO {
+        days_cumulative_negative += 1;
+    }
+    let first_sign = decimal_sign(cumulative);
+    if first_sign != 0 {
+        prev_sign = Some(first_sign);
+    }
+    cumulative_path.push(CumulativePoint {
+        day: first.day,
+        cumulative_net: cumulative,
+    });
+
+    for obs in observations.iter().skip(1) {
         gross_a_to_b_total = gross_a_to_b_total.checked_add(obs.gross_a_to_b)?;
         gross_b_to_a_total = gross_b_to_a_total.checked_add(obs.gross_b_to_a)?;
         let day_net = obs.gross_a_to_b.as_decimal() - obs.gross_b_to_a.as_decimal();
         cumulative += day_net;
 
-        peak = Some(match peak {
-            Some(p) => p.max(cumulative),
-            None => cumulative,
-        });
-        trough = Some(match trough {
-            Some(t) => t.min(cumulative),
-            None => cumulative,
-        });
+        peak = peak.max(cumulative);
+        trough = trough.min(cumulative);
 
         if cumulative < Decimal::ZERO {
             days_cumulative_negative += 1;
@@ -252,8 +262,8 @@ pub fn account_directional_flows(
         gross_b_to_a_total,
         net_total,
         cumulative_path,
-        peak_cumulative_net: peak.expect("non-empty series"),
-        trough_cumulative_net: trough.expect("non-empty series"),
+        peak_cumulative_net: peak,
+        trough_cumulative_net: trough,
         days_cumulative_negative,
         reversal_ratio,
         net_over_denominator,

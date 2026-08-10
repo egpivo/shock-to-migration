@@ -1,0 +1,44 @@
+schema_version = 3
+project_id = "gold_fixture"
+name = "Gold response-only fixture (synthetic sample, not historical fact)"
+
+[event]
+id = "gold_shock_synth"
+name = "Synthetic gold market shock"
+timestamp = "2026-06-12T14:00:00Z"
+
+[[windows]]
+name = "baseline"
+start = "2026-06-01"
+end = "2026-06-05"
+
+[[windows]]
+name = "event"
+start = "2026-06-12"
+end = "2026-06-16"
+
+[[assets]]
+key = "GC"
+chain = "tradfi"
+venue = "COMEX"
+instrument_id = "GC_FRONT_SYNTH"
+display_symbol = "GC"
+product_kind = "unknown"
+underlying_ref = "gold"
+role = "primary"
+
+[[coverage_declared]]
+kind = "route_attribution"
+scope = "gold_fixture"
+reason = "No linked capital-migration route is declared or observable in this fixture"
+
+[[coverage_declared]]
+kind = "trader_intent"
+scope = "GC"
+reason = "Price/volume series do not identify trader intent or source of capital"
+
+[response]
+baseline_window = "baseline"
+
+[inputs]
+response = "data/response_daily.csv"

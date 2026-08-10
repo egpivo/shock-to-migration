@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 /// Stable project-local handle used in config tables (`source = "A"`).
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct AssetKey(pub String);
 
 impl AssetKey {
@@ -41,10 +41,24 @@ impl std::fmt::Display for ChainId {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum AssetLocator {
-    Mint { address: String },
-    Erc20 { address: String },
-    CexSymbol { venue: String, symbol: String },
-    Opaque { id: String },
+    Mint {
+        address: String,
+    },
+    Erc20 {
+        address: String,
+    },
+    CexSymbol {
+        venue: String,
+        symbol: String,
+    },
+    /// Conventional / non-chain instrument. `instrument_id` is venue-specific, not a ticker alias.
+    MarketInstrument {
+        venue: String,
+        instrument_id: String,
+    },
+    Opaque {
+        id: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
