@@ -21,3 +21,11 @@ target
 #.idea/
 
 .local/
+
+# Removed TradFi / Yahoo freezes — on-chain projects only.
+# Empty shells sometimes reappear from editor path restores; keep them untracked.
+/projects/gold/
+/projects/oil/
+/projects/gold_oil/
+/projects/gold_oil_2026_07_08/
+/crates/fetch-gold-oil/

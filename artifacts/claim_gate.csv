@@ -19,3 +19,15 @@ article_2026_09_01_wtic_z,paxg_wtic_reference_2026_07_08,measure.shock(WTIC).z_s
 article_2026_09_01_wtic_activity,paxg_wtic_reference_2026_07_08,measure.activity(WTIC).ratio,0.3529664339207020021887326527,0.00005,0.35×,PASS,WTIC event-week activity ratio
 article_2026_09_01_div_paxg_wtic,paxg_wtic_reference_2026_07_08,measure.divergence(PAXG-WTIC).event_divergence,-0.0480873095175204659705159279,0.0000005,-4.81 pp,PASS,PAXG−WTIC event gap
 article_2026_09_01_div_paxg_wtic_z,paxg_wtic_reference_2026_07_08,measure.divergence(PAXG-WTIC).z_score,-1.4162784383251443138759019337,0.00005,-1.42 SD,PASS,PAXG−WTIC gap z
+article_2026_09_01_paxg_h1,paxg_wtic_reference_2026_07_08,measure.shock(PAXG).horizon_1,0.0127222437294835100394519706,0.0000005,+1.27%,PASS,PAXG cumulative return one observed session after event close
+article_2026_09_01_paxg_h5,paxg_wtic_reference_2026_07_08,measure.shock(PAXG).horizon_5,-0.0175267552184306230971728877,0.0000005,-1.75%,PASS,PAXG cumulative return five observed sessions after event close
+article_2026_09_01_paxg_h20,paxg_wtic_reference_2026_07_08,measure.shock(PAXG).horizon_20,-0.0113742549004028566828623572,0.0000005,-1.14%,PASS,PAXG cumulative return twenty observed sessions after event close
+article_2026_09_01_wtic_h5,paxg_wtic_reference_2026_07_08,measure.shock(WTIC).horizon_5,0.1060899599294479908044294309,0.0000005,+10.61%,PASS,WTIC cumulative return five genuine priced sessions after event close
+article_2026_09_01_div_baseline_n,paxg_wtic_reference_2026_07_08,measure.divergence(PAXG-WTIC).baseline_n,60,0,60 matched baseline gaps,PASS,Intersection of genuine PAXG and WTIC return observations
+article_2026_09_01_paxg_event_volume,paxg_wtic_reference_2026_07_08,data.PAXG.event_volume,5224066.606849,0.5,about $5.2 million,PASS,Frozen public-pool USD OHLCV
+article_2026_09_01_wtic_event_volume,paxg_wtic_reference_2026_07_08,data.WTIC.event_volume,3531.037951,0.5,about $3500,PASS,Frozen eligible-pool USD OHLCV
+article_2026_09_01_paxg_pool_count,paxg_wtic_reference_2026_07_08,freeze.PAXG.pool_count,20,0,twenty frozen pools,PASS,Pool universe frozen before aggregation
+article_2026_09_01_wtic_pool_count,paxg_wtic_reference_2026_07_08,freeze.WTIC.pool_count,1,0,one eligible pre-event pool,PASS,Post-event pool excluded
+article_2026_09_01_wtic_surface_days,paxg_wtic_reference_2026_07_08,data.WTIC.surface_days,113,0,113 surface days,PASS,Frozen WTIC daily surface rows
+article_2026_09_01_wtic_dust_days,paxg_wtic_reference_2026_07_08,data.WTIC.volume_lt_100,23,0,23 dust days,PASS,Days below the declared $100 price-use threshold
+article_2026_09_01_wtic_baseline_missing,paxg_wtic_reference_2026_07_08,data.WTIC.baseline_missing_price,15,0,15 of 90 baseline sessions missing,PASS,Missing price observations remain absent
