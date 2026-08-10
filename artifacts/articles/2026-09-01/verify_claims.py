@@ -4,8 +4,10 @@
 from __future__ import annotations
 
 import csv
+import io
 import json
 import subprocess
+import sys
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
@@ -42,6 +44,28 @@ def run_json(args: list[str]) -> dict:
 def main() -> None:
     paxg = run_json(["measure", "shock", PROJECT, "--asset", "PAXG"])
     wtic = run_json(["measure", "shock", PROJECT, "--asset", "WTIC"])
+    paxg_pass = run_json(
+        [
+            "measure",
+            "passthrough",
+            PROJECT,
+            "--asset",
+            "PAXG",
+            "--reference",
+            "GOLD_SPOT",
+        ]
+    )
+    wtic_pass = run_json(
+        [
+            "measure",
+            "passthrough",
+            PROJECT,
+            "--asset",
+            "WTIC",
+            "--reference",
+            "WTI_FRONT_MONTH",
+        ]
+    )
     div = run_json(
         [
             "measure",
@@ -67,7 +91,6 @@ def main() -> None:
     event_volume: dict[str, Decimal] = {}
     wtic_surface_days = 0
     wtic_dust_days = 0
-    wtic_baseline_missing = 0
     with response_path.open(newline="", encoding="utf-8") as handle:
         for row in csv.DictReader(handle):
             day = date.fromisoformat(row["day"])
@@ -77,8 +100,17 @@ def main() -> None:
                 wtic_surface_days += 1
                 if Decimal(row["volume"]) < Decimal(100):
                     wtic_dust_days += 1
-                if date(2026, 4, 9) <= day <= date(2026, 7, 7) and not row["price"]:
-                    wtic_baseline_missing += 1
+
+    sensitivity_output = subprocess.run(
+        [sys.executable, str(HERE / "threshold_sensitivity.py")],
+        cwd=REPO,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    sensitivity = list(csv.DictReader(io.StringIO(sensitivity_output)))
+    sensitivity_wtic_z = [Decimal(row["wtic_z"]) for row in sensitivity]
+    sensitivity_div_z = [Decimal(row["divergence_z"]) for row in sensitivity]
 
     with (project_dir / "data" / "pools_frozen.json").open(encoding="utf-8") as handle:
         paxg_pool_count = Decimal(json.load(handle)["pool_count"])
@@ -88,24 +120,40 @@ def main() -> None:
     actual: dict[str, Decimal] = {
         "article_2026_09_01_paxg_return": Decimal(paxg["shock"]["event_return"]),
         "article_2026_09_01_paxg_z": Decimal(paxg["shock"]["z_score"]),
-        "article_2026_09_01_paxg_activity": Decimal(paxg["activity"]["ratio"]),
         "article_2026_09_01_wtic_return": Decimal(wtic["shock"]["event_return"]),
         "article_2026_09_01_wtic_z": Decimal(wtic["shock"]["z_score"]),
-        "article_2026_09_01_wtic_activity": Decimal(wtic["activity"]["ratio"]),
+        "article_2026_09_01_wtic_baseline_n": Decimal(wtic["shock"]["baseline_n"]),
+        "article_2026_09_01_gold_reference_return": Decimal(
+            paxg_pass["reference_return"]
+        ),
+        "article_2026_09_01_paxg_passthrough_gap": Decimal(
+            paxg_pass["response_gap"]
+        ),
+        "article_2026_09_01_wti_reference_return": Decimal(
+            wtic_pass["reference_return"]
+        ),
+        "article_2026_09_01_wtic_passthrough_gap": Decimal(
+            wtic_pass["response_gap"]
+        ),
         "article_2026_09_01_div_paxg_wtic": Decimal(div["event_divergence"]),
         "article_2026_09_01_div_paxg_wtic_z": Decimal(div["z_score"]),
         "article_2026_09_01_paxg_h1": horizon(paxg, 1),
+        "article_2026_09_01_paxg_h3": horizon(paxg, 3),
         "article_2026_09_01_paxg_h5": horizon(paxg, 5),
         "article_2026_09_01_paxg_h20": horizon(paxg, 20),
+        "article_2026_09_01_wtic_h1": horizon(wtic, 1),
+        "article_2026_09_01_wtic_h3": horizon(wtic, 3),
         "article_2026_09_01_wtic_h5": horizon(wtic, 5),
         "article_2026_09_01_div_baseline_n": Decimal(div["baseline_n"]),
-        "article_2026_09_01_paxg_event_volume": event_volume["PAXG"],
         "article_2026_09_01_wtic_event_volume": event_volume["WTIC"],
         "article_2026_09_01_paxg_pool_count": paxg_pool_count,
         "article_2026_09_01_wtic_pool_count": wtic_pool_count,
         "article_2026_09_01_wtic_surface_days": Decimal(wtic_surface_days),
         "article_2026_09_01_wtic_dust_days": Decimal(wtic_dust_days),
-        "article_2026_09_01_wtic_baseline_missing": Decimal(wtic_baseline_missing),
+        "article_2026_09_01_sensitivity_wtic_z_min": min(sensitivity_wtic_z),
+        "article_2026_09_01_sensitivity_wtic_z_max": max(sensitivity_wtic_z),
+        "article_2026_09_01_sensitivity_div_z_min": min(sensitivity_div_z),
+        "article_2026_09_01_sensitivity_div_z_max": max(sensitivity_div_z),
     }
 
     with CLAIMS.open(newline="", encoding="utf-8") as handle:

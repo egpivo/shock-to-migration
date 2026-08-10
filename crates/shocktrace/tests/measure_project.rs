@@ -6,7 +6,9 @@
 use std::fs;
 use std::path::PathBuf;
 
-use shocktrace::measure::{load_asset_shock_report, load_divergence_summary, MeasureProjectError};
+use shocktrace::measure::{
+    load_asset_shock_report, load_divergence_summary, load_passthrough_summary, MeasureProjectError,
+};
 use shocktrace::{load_project, AssetKey, MeasureError};
 
 /// Fixture: A daily returns 0.02, 0.04, 0.02, 0.04 (baseline), 0.10 (event).
@@ -53,6 +55,7 @@ baseline_window = "baseline"
 
 [inputs]
 response = "response.csv"
+references = "references.csv"
 "#;
 
 const RESPONSE_CSV: &str = "asset_key,day,price,volume\n\
@@ -68,6 +71,10 @@ B,2026-01-03,51.005,\n\
 B,2026-01-04,51.51505,\n\
 B,2026-01-05,52.0302005,\n\
 B,2026-01-06,52.550502505,\n";
+
+const REFERENCE_CSV: &str =
+    "reference_key,asset_key,day,reference_return,source_label,source_url,cutoff\n\
+A_REF,A,2026-01-06,0.08,fixture,https://example.test,fixture close\n";
 
 fn write_fixture_project() -> PathBuf {
     let dir = {
@@ -87,6 +94,7 @@ fn write_fixture_project() -> PathBuf {
     fs::create_dir_all(&dir).unwrap();
     fs::write(dir.join("project.toml"), PROJECT_TOML).unwrap();
     fs::write(dir.join("response.csv"), RESPONSE_CSV).unwrap();
+    fs::write(dir.join("references.csv"), REFERENCE_CSV).unwrap();
     dir
 }
 
@@ -132,6 +140,21 @@ fn divergence_report_known_fixture_via_project_loader() {
     assert_eq!(summary.baseline_std, Some("0.01".parse().unwrap()));
     assert_eq!(summary.event_divergence, Some("0.09".parse().unwrap()));
     assert_eq!(summary.z_score, Some("7".parse().unwrap()));
+
+    cleanup(&dir);
+}
+
+#[test]
+fn passthrough_report_known_fixture_via_project_loader() {
+    let dir = write_fixture_project();
+    let cfg = load_project(&dir).unwrap();
+
+    let summary = load_passthrough_summary(&cfg, &AssetKey::new("A"), "A_REF", None).unwrap();
+
+    assert_eq!(summary.reference_return, "0.08".parse().unwrap());
+    assert_eq!(summary.token_return, Some("0.10".parse().unwrap()));
+    assert_eq!(summary.response_gap, Some("0.02".parse().unwrap()));
+    assert_eq!(summary.direction_match, Some(true));
 
     cleanup(&dir);
 }

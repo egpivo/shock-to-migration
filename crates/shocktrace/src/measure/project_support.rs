@@ -17,6 +17,9 @@ use crate::coverage::{AnalysisSection, CoverageGap, EvidenceBoundary, MissingKin
 use crate::event::{EventWindow, SessionCalendar};
 use crate::identity::AssetKey;
 use crate::ingest::daily_response::{load_daily_response, ResponseIngestError};
+use crate::ingest::reference_returns::{
+    load_reference_returns, ReferenceReturnIngestError, ReferenceReturnObservation,
+};
 use crate::measure::returns::MeasureError;
 use crate::measure::stats::ADEQUATE_BASELINE_OBSERVATIONS;
 use crate::project::ProjectConfig;
@@ -26,8 +29,12 @@ use crate::response::ResponseObservation;
 pub enum MeasureProjectError {
     #[error("ingest error: {0}")]
     Ingest(#[from] ResponseIngestError),
+    #[error("reference ingest error: {0}")]
+    ReferenceIngest(#[from] ReferenceReturnIngestError),
     #[error("project has no inputs.response declared")]
     NoResponseInput,
+    #[error("project has no inputs.references declared")]
+    NoReferenceInput,
     #[error("no [response] baseline_window declared and no --baseline-window override given")]
     NoBaselineWindow,
     #[error("window '{0}' not found among declared project windows")]
@@ -40,6 +47,10 @@ pub enum MeasureProjectError {
     UndeclaredAsset { asset: String },
     #[error("asset '{asset}' is declared but has no response rows in {path}")]
     NoObservationsForAsset { asset: String, path: String },
+    #[error("reference '{reference}' for asset '{asset}' is not present in the event window")]
+    ReferenceNotFound { reference: String, asset: String },
+    #[error("reference '{reference}' for asset '{asset}' has multiple rows in the event window")]
+    AmbiguousReference { reference: String, asset: String },
     #[error("measurement error: {0}")]
     Measure(#[from] MeasureError),
 }
@@ -54,6 +65,18 @@ pub(crate) fn load_response_rows(
         .ok_or(MeasureProjectError::NoResponseInput)?;
     let path = cfg.root.join(rel);
     Ok(load_daily_response(&path)?)
+}
+
+pub(crate) fn load_reference_rows(
+    cfg: &ProjectConfig,
+) -> Result<Vec<ReferenceReturnObservation>, MeasureProjectError> {
+    let rel = cfg
+        .inputs
+        .references
+        .as_ref()
+        .ok_or(MeasureProjectError::NoReferenceInput)?;
+    let path = cfg.root.join(rel);
+    Ok(load_reference_returns(&path)?)
 }
 
 pub(crate) fn observations_for_asset(

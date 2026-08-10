@@ -11,6 +11,7 @@ use super::shock::AssetShockReport;
 use super::stats::ZScoreUnavailable;
 use crate::coverage::format_evidence_boundary;
 use crate::measure::divergence::DivergenceSummary;
+use crate::measure::passthrough::PassThroughSummary;
 
 fn fmt_opt(value: Option<Decimal>) -> String {
     match value {
@@ -139,6 +140,38 @@ pub fn format_divergence_summary(summary: &DivergenceSummary) -> String {
         fmt_reason(&summary.unavailable_reason),
         low
     );
+    let _ = writeln!(out, "boundary: {}", summary.interpretation_boundary);
+    out.push_str(&format_evidence_boundary(&summary.boundary));
+    out.push('\n');
+    out
+}
+
+pub fn format_passthrough_summary(summary: &PassThroughSummary) -> String {
+    let mut out = String::new();
+    let _ = writeln!(
+        out,
+        "pass-through: {} vs {}",
+        summary.asset_key, summary.reference_key
+    );
+    let _ = writeln!(out, "  event day       : {}", summary.event_day);
+    let _ = writeln!(
+        out,
+        "  reference return: {}",
+        summary.reference_return.round_dp(6)
+    );
+    let _ = writeln!(out, "  token return    : {}", fmt_opt(summary.token_return));
+    let _ = writeln!(
+        out,
+        "  response gap    : {} (token - reference)",
+        fmt_opt(summary.response_gap)
+    );
+    let direction = match summary.direction_match {
+        Some(true) => "same",
+        Some(false) => "opposite",
+        None => "unavailable",
+    };
+    let _ = writeln!(out, "  direction       : {direction}");
+    let _ = writeln!(out, "  reference cutoff: {}", summary.reference_cutoff);
     let _ = writeln!(out, "boundary: {}", summary.interpretation_boundary);
     out.push_str(&format_evidence_boundary(&summary.boundary));
     out.push('\n');

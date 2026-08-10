@@ -2,13 +2,12 @@
 //!
 //! Convention: **simple** returns, `r_t = p_t / p_{t-1} - 1`, matching the
 //! `price_return` style already used by `market_response.v1`. Returns are
-//! built from consecutive **priced** observations (days with `price = None`
-//! are skipped, not zero-filled), so a return's `prev_day` is not
-//! necessarily the calendar day before `day` — it is the previous day with
-//! an observed price. This lets a single per-asset series feed both a
-//! baseline window and an event window without needing the caller to
-//! pre-split observations at window boundaries (which would silently drop
-//! the return that spans the boundary).
+//! built only when both the current calendar day and the immediately
+//! preceding calendar day have prices. A missing row or `price = None`
+//! breaks the chain: the next observed price does not become a multi-day
+//! return mislabeled as daily. The transform runs before window filtering,
+//! so a valid one-day return that crosses a window boundary is retained and
+//! attributed to its later day.
 
 use std::collections::HashSet;
 
@@ -34,8 +33,7 @@ pub enum MeasureError {
 pub struct DailyReturn {
     /// The day of `p_t` (the return is attributed to this day).
     pub day: NaiveDate,
-    /// The day of `p_{t-1}` — the previous *priced* observation, which may
-    /// be earlier than the calendar day before `day`.
+    /// The day of `p_{t-1}` — exactly one calendar day before `day`.
     pub prev_day: NaiveDate,
     /// `p_t / p_{t-1} - 1`.
     pub value: Decimal,
@@ -90,15 +88,19 @@ pub(crate) fn priced_only(sorted: &[ResponseObservation]) -> Vec<&ResponseObserv
 }
 
 /// Pure transform: sorted single-asset observations -> daily simple returns.
-/// A pair whose earlier price is zero is skipped (division undefined), not
-/// treated as an error — mirrors `price_return`'s `None`-on-zero-first-price
-/// behavior in `response.rs`.
+/// A missing calendar day, a missing price on either side, or a zero earlier
+/// price breaks the return chain. These cases are skipped rather than filled
+/// or coerced — mirrors `price_return`'s `None`-on-zero-first-price behavior
+/// in `response.rs`.
 pub(crate) fn returns_from_sorted(sorted: &[ResponseObservation]) -> Vec<DailyReturn> {
-    let priced = priced_only(sorted);
-    let mut out = Vec::with_capacity(priced.len());
-    for pair in priced.windows(2) {
-        let prev_price = pair[0].price.expect("priced_only guarantees Some");
-        let cur_price = pair[1].price.expect("priced_only guarantees Some");
+    let mut out = Vec::with_capacity(sorted.len());
+    for pair in sorted.windows(2) {
+        if pair[1].day.signed_duration_since(pair[0].day).num_days() != 1 {
+            continue;
+        }
+        let (Some(prev_price), Some(cur_price)) = (pair[0].price, pair[1].price) else {
+            continue;
+        };
         if prev_price == Decimal::ZERO {
             continue;
         }
@@ -137,17 +139,24 @@ mod tests {
     }
 
     #[test]
-    fn simple_returns_skip_missing_price_days() {
+    fn missing_price_breaks_daily_return_chain() {
         let series = vec![
             obs("2026-01-01", Some("100")),
             obs("2026-01-02", None),
             obs("2026-01-03", Some("110")),
         ];
         let returns = daily_returns(series).unwrap();
-        assert_eq!(returns.len(), 1);
-        assert_eq!(returns[0].day.to_string(), "2026-01-03");
-        assert_eq!(returns[0].prev_day.to_string(), "2026-01-01");
-        assert_eq!(returns[0].value, Decimal::from_str("0.1").unwrap());
+        assert!(returns.is_empty());
+    }
+
+    #[test]
+    fn absent_calendar_day_breaks_daily_return_chain() {
+        let series = vec![
+            obs("2026-01-01", Some("100")),
+            obs("2026-01-03", Some("110")),
+        ];
+        let returns = daily_returns(series).unwrap();
+        assert!(returns.is_empty());
     }
 
     #[test]
@@ -187,7 +196,7 @@ mod tests {
     #[test]
     fn unsorted_input_is_sorted_before_pairing() {
         let series = vec![
-            obs("2026-01-03", Some("110")),
+            obs("2026-01-02", Some("110")),
             obs("2026-01-01", Some("100")),
         ];
         let returns = daily_returns(series).unwrap();

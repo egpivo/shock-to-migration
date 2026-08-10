@@ -7,8 +7,8 @@ use std::process::ExitCode;
 use clap::{Parser, Subcommand, ValueEnum};
 use shocktrace::load_project;
 use shocktrace::measure::{
-    format_divergence_summary, format_shock_report_summary, load_asset_shock_report,
-    load_divergence_summary,
+    format_divergence_summary, format_passthrough_summary, format_shock_report_summary,
+    load_asset_shock_report, load_divergence_summary, load_passthrough_summary,
 };
 use shocktrace::report::{
     analyze_project, compare_projects, flows_view, format_compare_table, format_flows_summary,
@@ -79,6 +79,18 @@ enum MeasureCommands {
         /// Observed trading sessions after event start (not calendar days).
         #[arg(long, value_delimiter = ',', default_value = "1,3,5,20")]
         horizons: Vec<usize>,
+        #[arg(long, value_enum, default_value_t = OutputFormat::Summary)]
+        format: OutputFormat,
+    },
+    /// Same-date token return minus a frozen source-reported reference return.
+    Passthrough {
+        project: PathBuf,
+        #[arg(long)]
+        asset: String,
+        #[arg(long)]
+        reference: String,
+        #[arg(long = "event-window")]
+        event_window: Option<String>,
         #[arg(long, value_enum, default_value_t = OutputFormat::Summary)]
         format: OutputFormat,
     },
@@ -223,6 +235,25 @@ fn run_measure(command: MeasureCommands) -> Result<(), Box<dyn std::error::Error
             )?;
             match format {
                 OutputFormat::Summary => println!("{}", format_divergence_summary(&summary)),
+                OutputFormat::Json => println!("{}", serde_json::to_string_pretty(&summary)?),
+            }
+        }
+        MeasureCommands::Passthrough {
+            project,
+            asset,
+            reference,
+            event_window,
+            format,
+        } => {
+            let cfg = load_project(&project)?;
+            let summary = load_passthrough_summary(
+                &cfg,
+                &AssetKey::new(asset),
+                &reference,
+                event_window.as_deref(),
+            )?;
+            match format {
+                OutputFormat::Summary => println!("{}", format_passthrough_summary(&summary)),
                 OutputFormat::Json => println!("{}", serde_json::to_string_pretty(&summary)?),
             }
         }

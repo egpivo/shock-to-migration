@@ -13,21 +13,29 @@ spacex_flow_window_days,spacex,directional_flow.window_days(full_flow_period),56
 spacex_flow_observed_days,spacex,directional_flow.observed_days(full_flow_period),43,0,not stated numerically in article,PASS,"43 of 56 days have flow observations; 13-day coverage gap declared via detected route_attribution boundary, not fabricated as zero-flow days."
 article_2026_09_01_paxg_return,paxg_wtic_reference_2026_07_08,measure.shock(PAXG).event_return,-0.0091863186289393858606294882,0.0000005,−0.92%,PASS,PAXG event-day return
 article_2026_09_01_paxg_z,paxg_wtic_reference_2026_07_08,measure.shock(PAXG).z_score,-0.6264301730576899085009094941,0.00005,−0.63 SD,PASS,PAXG shock z
-article_2026_09_01_paxg_activity,paxg_wtic_reference_2026_07_08,measure.activity(PAXG).ratio,0.5198122290385650845940548213,0.00005,0.52×,PASS,PAXG event-week activity ratio
 article_2026_09_01_wtic_return,paxg_wtic_reference_2026_07_08,measure.shock(WTIC).event_return,0.0389009908885810801098864397,0.0000005,+3.89%,PASS,WTIC event-day return
-article_2026_09_01_wtic_z,paxg_wtic_reference_2026_07_08,measure.shock(WTIC).z_score,1.4300230141798892338881335096,0.00005,+1.43 SD,PASS,WTIC shock z
-article_2026_09_01_wtic_activity,paxg_wtic_reference_2026_07_08,measure.activity(WTIC).ratio,0.3529664339207020021887326527,0.00005,0.35×,PASS,WTIC event-week activity ratio
+article_2026_09_01_wtic_z,paxg_wtic_reference_2026_07_08,measure.shock(WTIC).z_score,1.61229830270665889157695449,0.00005,+1.61 SD,PASS,WTIC shock z with adjacent-calendar-day return contract
+article_2026_09_01_wtic_baseline_n,paxg_wtic_reference_2026_07_08,measure.shock(WTIC).baseline_n,48,0,48 daily returns,PASS,Only adjacent calendar days with prices on both sides
+article_2026_09_01_gold_reference_return,paxg_wtic_reference_2026_07_08,measure.passthrough(PAXG/GOLD_SPOT).reference_return,-0.0052,0,-0.52%,PASS,Reuters-reported spot-gold event-day return frozen as reference input
+article_2026_09_01_paxg_passthrough_gap,paxg_wtic_reference_2026_07_08,measure.passthrough(PAXG/GOLD_SPOT).response_gap,-0.0039863186289393858606294882,0.0000005,-0.40 pp,PASS,Token return minus source-reported reference return
+article_2026_09_01_wti_reference_return,paxg_wtic_reference_2026_07_08,measure.passthrough(WTIC/WTI_FRONT_MONTH).reference_return,0.044,0,+4.40%,PASS,Reuters-reported front-month WTI settlement return frozen as reference input
+article_2026_09_01_wtic_passthrough_gap,paxg_wtic_reference_2026_07_08,measure.passthrough(WTIC/WTI_FRONT_MONTH).response_gap,-0.0050990091114189198901135603,0.0000005,-0.51 pp,PASS,Token return minus source-reported reference return
 article_2026_09_01_div_paxg_wtic,paxg_wtic_reference_2026_07_08,measure.divergence(PAXG-WTIC).event_divergence,-0.0480873095175204659705159279,0.0000005,-4.81 pp,PASS,PAXG−WTIC event gap
-article_2026_09_01_div_paxg_wtic_z,paxg_wtic_reference_2026_07_08,measure.divergence(PAXG-WTIC).z_score,-1.4162784383251443138759019337,0.00005,-1.42 SD,PASS,PAXG−WTIC gap z
+article_2026_09_01_div_paxg_wtic_z,paxg_wtic_reference_2026_07_08,measure.divergence(PAXG-WTIC).z_score,-1.633489750771666489954692633,0.00005,-1.63 SD,PASS,PAXG−WTIC gap z with adjacent-calendar-day returns
 article_2026_09_01_paxg_h1,paxg_wtic_reference_2026_07_08,measure.shock(PAXG).horizon_1,0.0127222437294835100394519706,0.0000005,+1.27%,PASS,PAXG cumulative return one observed session after event close
+article_2026_09_01_paxg_h3,paxg_wtic_reference_2026_07_08,measure.shock(PAXG).horizon_3,0.0078724297376052428715493299,0.0000005,+0.79%,PASS,PAXG cumulative return three observed sessions after event close
 article_2026_09_01_paxg_h5,paxg_wtic_reference_2026_07_08,measure.shock(PAXG).horizon_5,-0.0175267552184306230971728877,0.0000005,-1.75%,PASS,PAXG cumulative return five observed sessions after event close
 article_2026_09_01_paxg_h20,paxg_wtic_reference_2026_07_08,measure.shock(PAXG).horizon_20,-0.0113742549004028566828623572,0.0000005,-1.14%,PASS,PAXG cumulative return twenty observed sessions after event close
+article_2026_09_01_wtic_h1,paxg_wtic_reference_2026_07_08,measure.shock(WTIC).horizon_1,-0.0241625209453042027322721848,0.0000005,-2.42%,PASS,WTIC cumulative return one priced observation after event close
+article_2026_09_01_wtic_h3,paxg_wtic_reference_2026_07_08,measure.shock(WTIC).horizon_3,0.0693898433874849579629695936,0.0000005,+6.94%,PASS,WTIC cumulative return three priced observations after event close
 article_2026_09_01_wtic_h5,paxg_wtic_reference_2026_07_08,measure.shock(WTIC).horizon_5,0.1060899599294479908044294309,0.0000005,+10.61%,PASS,WTIC cumulative return five genuine priced sessions after event close
-article_2026_09_01_div_baseline_n,paxg_wtic_reference_2026_07_08,measure.divergence(PAXG-WTIC).baseline_n,60,0,60 matched baseline gaps,PASS,Intersection of genuine PAXG and WTIC return observations
-article_2026_09_01_paxg_event_volume,paxg_wtic_reference_2026_07_08,data.PAXG.event_volume,5224066.606849,0.5,about $5.2 million,PASS,Frozen public-pool USD OHLCV
+article_2026_09_01_div_baseline_n,paxg_wtic_reference_2026_07_08,measure.divergence(PAXG-WTIC).baseline_n,48,0,48 matched baseline gaps,PASS,Intersection of adjacent-calendar-day PAXG and WTIC returns
 article_2026_09_01_wtic_event_volume,paxg_wtic_reference_2026_07_08,data.WTIC.event_volume,3531.037951,0.5,about $3500,PASS,Frozen eligible-pool USD OHLCV
 article_2026_09_01_paxg_pool_count,paxg_wtic_reference_2026_07_08,freeze.PAXG.pool_count,20,0,twenty frozen pools,PASS,Pool universe frozen before aggregation
 article_2026_09_01_wtic_pool_count,paxg_wtic_reference_2026_07_08,freeze.WTIC.pool_count,1,0,one eligible pre-event pool,PASS,Post-event pool excluded
 article_2026_09_01_wtic_surface_days,paxg_wtic_reference_2026_07_08,data.WTIC.surface_days,113,0,113 surface days,PASS,Frozen WTIC daily surface rows
 article_2026_09_01_wtic_dust_days,paxg_wtic_reference_2026_07_08,data.WTIC.volume_lt_100,23,0,23 dust days,PASS,Days below the declared $100 price-use threshold
-article_2026_09_01_wtic_baseline_missing,paxg_wtic_reference_2026_07_08,data.WTIC.baseline_missing_price,15,0,15 of 90 baseline sessions missing,PASS,Missing price observations remain absent
+article_2026_09_01_sensitivity_wtic_z_min,paxg_wtic_reference_2026_07_08,sensitivity.WTIC.z_min,1.5626407781246983740216186767,0.00005,+1.56 SD,PASS,Minimum WTIC shock z across $0/$50/$100/$250 dust thresholds
+article_2026_09_01_sensitivity_wtic_z_max,paxg_wtic_reference_2026_07_08,sensitivity.WTIC.z_max,1.6122982790504598932674442576,0.00005,+1.61 SD,PASS,Maximum WTIC shock z across $0/$50/$100/$250 dust thresholds
+article_2026_09_01_sensitivity_div_z_min,paxg_wtic_reference_2026_07_08,sensitivity.PAXG-WTIC.z_min,-1.6334897164264645856614239075,0.00005,-1.63 SD,PASS,Minimum divergence z across $0/$50/$100/$250 dust thresholds
+article_2026_09_01_sensitivity_div_z_max,paxg_wtic_reference_2026_07_08,sensitivity.PAXG-WTIC.z_max,-1.5669762336931899962485335584,0.00005,-1.57 SD,PASS,Maximum divergence z across $0/$50/$100/$250 dust thresholds

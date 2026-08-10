@@ -1,0 +1,22 @@
+{
+  "frozen_at": "2026-08-10",
+  "event_day": "2026-07-08",
+  "source": "Reuters cross-market close report",
+  "source_url": "https://www.investing.com/news/economy-news/oil-jumps-and-bonds-dip-as-us-strikes-iran-4780549",
+  "observations": {
+    "GOLD_SPOT": {
+      "asset_key": "PAXG",
+      "reported_return": -0.0052,
+      "reported_level": 4084.19,
+      "unit": "USD per ounce"
+    },
+    "WTI_FRONT_MONTH": {
+      "asset_key": "WTIC",
+      "reported_return": 0.044,
+      "reported_level": 73.52,
+      "reported_change": 3.08,
+      "unit": "USD per barrel"
+    }
+  },
+  "boundary": "Source-reported same-date returns only. No off-chain history is stored, and the reference cutoffs are not synchronized to UTC on-chain pool candles."
+}

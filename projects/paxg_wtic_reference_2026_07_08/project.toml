@@ -94,8 +94,8 @@ reason = "WTIC volume is GeckoTerminal USD OHLCV for the frozen pre-event WTIC/U
 
 [[coverage_declared]]
 kind = "other"
-scope = "offchain_reference"
-reason = "Off-chain gold/WTI reference tapes are not stored in this repository; news context about spot gold/WTI is external and not a measured leg"
+scope = "reference_cutoff"
+reason = "Frozen reference returns are source-reported same-date observations, not synchronized intraday marks. The repo stores no off-chain history, so pass-through is an event-day response gap only"
 
 [[coverage_declared]]
 kind = "supply"
@@ -106,8 +106,9 @@ reason = "Daily mint/burn and authority events are not reconstructed in this fre
 baseline_window = "baseline"
 
 [data_provenance]
-source_description = "On-chain-only freeze for 2026-07-08. PAXG: Ethereum 0x45804880de22913dafe09f4980848ece6ecbaf78; pool universe frozen from GeckoTerminal before aggregation; USD VWAP on stable-quoted pools; volume = sum of frozen-pool USD OHLCV. WTIC: Ethereum 0x709ab533D18e652eCd56423d71c0241A0ee56a3b (Energy Substantiation Partners); only pre-event WTIC/USDC Uniswap v3 0.3% pool 0xdd109a10… frozen; closes with pool USD volume < $100 left missing. Candle day = UTC date of GeckoTerminal timestamp. See SOURCE.md and data/FREEZE_META.json."
+source_description = "Primary response data are on-chain PAXG/WTIC public-pool observations for 2026-07-08. PAXG: Ethereum 0x45804880de22913dafe09f4980848ece6ecbaf78; pool universe frozen from GeckoTerminal before aggregation; USD VWAP on stable-quoted pools; volume = sum of frozen-pool USD OHLCV. WTIC: Ethereum 0x709ab533D18e652eCd56423d71c0241A0ee56a3b (Energy Substantiation Partners); only pre-event WTIC/USDC Uniswap v3 0.3% pool 0xdd109a10… frozen; closes with pool USD volume < $100 left missing. Candle day = UTC date of GeckoTerminal timestamp. Two source-reported event-day commodity returns are frozen only for pass-through comparison; no off-chain history is stored. See SOURCE.md, data/FREEZE_META.json, and data/REFERENCE_META.json."
 extracted_at = "2026-08-10T10:46:23Z"
 
 [inputs]
 response = "data/response_daily.csv"
+references = "data/reference_returns.csv"

@@ -1,0 +1,3 @@
+reference_key,asset_key,day,reference_return,source_label,source_url,cutoff
+GOLD_SPOT,PAXG,2026-07-08,-0.0052,Reuters cross-market close report,https://www.investing.com/news/economy-news/oil-jumps-and-bonds-dip-as-us-strikes-iran-4780549,Reuters-reported spot gold change on July 8; not synchronized to the UTC pool candle
+WTI_FRONT_MONTH,WTIC,2026-07-08,0.044,Reuters cross-market close report,https://www.investing.com/news/economy-news/oil-jumps-and-bonds-dip-as-us-strikes-iran-4780549,Reuters-reported front-month WTI settlement change on July 8; not synchronized to the UTC pool candle

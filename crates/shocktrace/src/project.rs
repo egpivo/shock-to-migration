@@ -72,6 +72,7 @@ pub struct InputPaths {
     pub flows: Option<String>,
     pub supply: Option<String>,
     pub response: Option<String>,
+    pub references: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -229,6 +230,8 @@ struct RawInputs {
     supply: Option<String>,
     #[serde(default)]
     response: Option<String>,
+    #[serde(default)]
+    references: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -406,6 +409,7 @@ fn map_raw(raw: RawProject, root: PathBuf) -> Result<ProjectConfig, ProjectError
             flows: raw.inputs.flows,
             supply: raw.inputs.supply,
             response: raw.inputs.response,
+            references: raw.inputs.references,
         },
         data_provenance: raw.data_provenance.map(|p| DataProvenanceMeta {
             source_description: p.source_description,
@@ -618,6 +622,21 @@ pub fn validate_project(cfg: &ProjectConfig) -> Result<(), ProjectError> {
             return Err(ProjectError::Validation(
                 "inputs.response requires at least one window with applies_to including response"
                     .into(),
+            ));
+        }
+    }
+
+    if let Some(rel) = &cfg.inputs.references {
+        let path = cfg.root.join(rel);
+        if !path.is_file() {
+            return Err(ProjectError::Validation(format!(
+                "references input not found: {}",
+                path.display()
+            )));
+        }
+        if cfg.inputs.response.is_none() {
+            return Err(ProjectError::Validation(
+                "inputs.references requires inputs.response for token-return comparison".into(),
             ));
         }
     }

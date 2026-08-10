@@ -1,7 +1,7 @@
 # Source: projects/paxg_wtic_reference_2026_07_08
 
 **Primary empirical objects:** on-chain RWA tokens **PAXG** and **WTIC** only.
-This repository does **not** store off-chain gold/WTI reference tapes.
+The project also freezes two source-reported event-day commodity returns for a same-date pass-through comparison. It does **not** store off-chain price history.
 
 ## Canonical identities
 
@@ -38,16 +38,23 @@ Independently verified on-chain: name, symbol, decimals, bytecode present, Gecko
 - Renewed U.S.–Iran escalation after an interim truce faltered — **not** war onset.
 - After WTIC deployment (pool created 2026-03-11), so a paired on-chain case is feasible.
 
+## Event-day reference observations
+
+Reuters' 8 July cross-market close report states that spot gold fell `0.52%` to `$4,084.19` per ounce and front-month WTI rose `4.4%` to `$73.52` per barrel. These reported returns are frozen in `data/reference_returns.csv` as `GOLD_SPOT` and `WTI_FRONT_MONTH`.
+
+They are comparison points, not additional research subjects. Their cutoffs are not synchronized to the UTC pool candles, so `measure passthrough` reports a same-date response gap—not beta, causal transmission, or a synchronized tracking error. Source metadata lives in `data/REFERENCE_META.json`.
+
 ## Feasibility gates (passed before drafting)
 
 1. Both contracts confirmed from chain/GeckoTerminal primary reads.
 2. Pool universes frozen before examining event z-scores (`pools_frozen.json`, `wtic_pools_frozen.json`).
 3. WTIC traded before and on 2026-07-08 (event-day pool USD volume ~ $3.5k; priced observation retained).
-4. Dust / near-no-trade days (`volume < $100`) have **price left missing** — not converted into zero return.
-5. No-trade / dust ≠ fabricated zero activity for the price series.
-6. Baseline windows checked for adequacy; thin WTIC history remains part of the result (`low_baseline` when applicable).
-7. On-chain candle day = UTC date of GeckoTerminal timestamp.
-8. Unsupported surfaces (mint/burn, depth, attestation, off-chain refs) stay **unavailable** / out of repo.
+4. The `$100` minimum traded-notional rule was frozen before computing the event metrics. Dust / near-no-trade days have **price left missing** — not converted into zero return.
+5. A daily return requires prices on adjacent UTC calendar days. A missing row or missing price breaks the chain; the engine does not relabel a multi-day move as daily.
+6. No-trade / dust ≠ fabricated zero activity for the price series.
+7. Baseline windows checked for adequacy; thin WTIC history remains part of the result (`low_baseline` when applicable).
+8. On-chain candle day = UTC date of GeckoTerminal timestamp.
+9. Unsupported surfaces (mint/burn, depth, attestation, off-chain history) stay **unavailable** / out of repo.
 
 ### WTIC pool freeze rule
 
@@ -66,6 +73,10 @@ Excluded: `0x95e707ca…` (WTIC/USDC 0.05%, created **2026-08-05**, after the ev
 
 Do **not** compare PAXG and WTIC as if market quality were equal. Thin evidence for WTIC is part of the measurement.
 
+## Dust-threshold sensitivity
+
+The article reruns WTIC at `$0`, `$50`, `$100`, and `$250` minimum daily pool volume. Across those settings, the WTIC event score remains `+1.56` to `+1.61` standard deviations and PAXG−WTIC divergence remains `−1.57` to `−1.63`. Sample size changes; direction and interpretation do not. See `artifacts/articles/2026-09-01/threshold_sensitivity.csv`.
+
 ## Rejected oil substitutes
 
 Not used as the oil RWA leg: `CVXx`, `USOX`, `OILX`, `XOPx`, GCEX WTI/USD, oil perpetuals.
@@ -77,4 +88,4 @@ Not used as the oil RWA leg: `CVXx`, `USOX`, `OILX`, `XOPx`, GCEX WTI/USD, oil p
 - Cross-asset divergence is migration.
 - Issuer backing is proven without attestation.
 - WTIC liquidity is comparable to PAXG.
-- Off-chain gold/WTI tapes are frozen in this repo.
+- A full off-chain gold/WTI history or synchronized intraday marks were analyzed.
