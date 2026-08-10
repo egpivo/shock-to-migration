@@ -1,0 +1,113 @@
+schema_version = 3
+project_id = "paxg_wtic_reference_2026_07_08"
+name = "PAXG and WTIC public-pool response (8 Jul 2026)"
+
+[event]
+id = "us_iran_renewed_escalation_2026_07_08"
+name = "Renewed U.S.–Iran escalation after interim truce falters"
+timestamp = "2026-07-08T00:00:00Z"
+
+[[windows]]
+name = "baseline"
+start = "2026-04-09"
+end = "2026-07-07"
+applies_to = ["response"]
+
+[[windows]]
+name = "event_week"
+start = "2026-07-08"
+end = "2026-07-15"
+applies_to = ["response"]
+
+[[windows]]
+name = "post_event_40d"
+start = "2026-07-08"
+end = "2026-08-01"
+applies_to = ["response"]
+
+[[assets]]
+key = "PAXG"
+chain = "ethereum"
+erc20 = "0x45804880de22913dafe09f4980848ece6ecbaf78"
+display_symbol = "PAXG"
+issuer = "Paxos Trust Company"
+product_kind = "spot_share"
+underlying_ref = "one_troy_ounce_allocated_gold_subject_to_issuer_terms"
+role = "primary_onchain_gold"
+session_calendar = "continuous"
+
+[[assets]]
+key = "WTIC"
+chain = "ethereum"
+erc20 = "0x709ab533D18e652eCd56423d71c0241A0ee56a3b"
+display_symbol = "WTIC"
+issuer = "Energy Substantiation Partners, LLC"
+product_kind = "spot_share"
+underlying_ref = "one_barrel_wti_issuer_claim_energy_receipts"
+role = "primary_onchain_oil"
+session_calendar = "continuous"
+
+[[coverage_declared]]
+kind = "route_attribution"
+scope = "paxg_wtic_reference"
+reason = "No linked capital-migration route between PAXG and WTIC is declared or observable; cross-asset gaps are not capital flow"
+
+[[coverage_declared]]
+kind = "trader_intent"
+scope = "PAXG+WTIC"
+reason = "Public-pool OHLCV does not identify trader intent, economic users behind routers, or primary/redemption flow"
+
+[[coverage_declared]]
+kind = "actor_linkage"
+scope = "all"
+reason = "Cross-market investor identity is not observed"
+
+[[coverage_declared]]
+kind = "historical_depth"
+scope = "PAXG+WTIC"
+reason = "Intraday depth and executable quote boundaries are not reconstructed in this freeze"
+
+[[coverage_declared]]
+kind = "other"
+scope = "PAXG.volume"
+reason = "PAXG volume is aggregated GeckoTerminal USD OHLCV across the frozen Ethereum public-pool set — not ERC-20 transfer volume, mint/burn, or CEX tape"
+
+[[coverage_declared]]
+kind = "other"
+scope = "PAXG.price"
+reason = "PAXG price is VWAP over frozen USDC/USDT/DAI-quoted pools only"
+
+[[coverage_declared]]
+kind = "other"
+scope = "WTIC.market_quality"
+reason = "WTIC public surface is thin (single pre-event Uniswap v3 WTIC/USDC 0.3% pool; event-day pool USD volume ~$3.5k; total supply ~4150 tokens). Dust days with volume < $100 have price left missing (not zero-filled). Do not treat WTIC market quality as comparable to PAXG"
+
+[[coverage_declared]]
+kind = "other"
+scope = "WTIC.backing"
+reason = "Issuer claims 1:1 WTI barrel backing via energy receipts with an independent custodian; reserve backing is an issuer claim in this project unless a named attestation is attached"
+
+[[coverage_declared]]
+kind = "other"
+scope = "WTIC.volume"
+reason = "WTIC volume is GeckoTerminal USD OHLCV for the frozen pre-event WTIC/USDC pool only (pool created 2026-03-11). Post-event 0.05% pool created 2026-08-05 is excluded from the freeze"
+
+[[coverage_declared]]
+kind = "other"
+scope = "offchain_reference"
+reason = "Off-chain gold/WTI reference tapes are not stored in this repository; news context about spot gold/WTI is external and not a measured leg"
+
+[[coverage_declared]]
+kind = "supply"
+scope = "WTIC+PAXG"
+reason = "Daily mint/burn and authority events are not reconstructed in this freeze; supply response is unavailable here"
+
+[response]
+baseline_window = "baseline"
+
+[data_provenance]
+source_description = "On-chain-only freeze for 2026-07-08. PAXG: Ethereum 0x45804880de22913dafe09f4980848ece6ecbaf78; pool universe frozen from GeckoTerminal before aggregation; USD VWAP on stable-quoted pools; volume = sum of frozen-pool USD OHLCV. WTIC: Ethereum 0x709ab533D18e652eCd56423d71c0241A0ee56a3b (Energy Substantiation Partners); only pre-event WTIC/USDC Uniswap v3 0.3% pool 0xdd109a10… frozen; closes with pool USD volume < $100 left missing. Candle day = UTC date of GeckoTerminal timestamp. See SOURCE.md and data/FREEZE_META.json."
+extracted_at = "2026-08-10T10:46:23Z"
+
+[inputs]
+response = "data/response_daily.csv"

@@ -12,9 +12,11 @@ fn root() -> PathBuf {
 }
 
 #[test]
-fn gold_project_response_only_no_zero_flow() {
-    let cfg = load_project(root().join("projects/gold")).unwrap();
+fn paxg_wtic_project_response_only_no_zero_flow() {
+    let cfg = load_project(root().join("projects/paxg_wtic_reference_2026_07_08")).unwrap();
     assert!(cfg.routes.is_empty());
+    assert_eq!(cfg.assets.len(), 2);
+    assert!(cfg.assets.iter().all(|a| a.id.chain.0 == "ethereum"));
     let result = analyze_project(&cfg, "test").unwrap();
     assert!(matches!(
         result.market_response,
@@ -29,17 +31,6 @@ fn gold_project_response_only_no_zero_flow() {
     }
     let json = serde_json::to_string(&result).unwrap();
     assert!(!json.contains("is_migration"));
-}
-
-#[test]
-fn oil_project_requires_no_core_special_case() {
-    let cfg = load_project(root().join("projects/oil")).unwrap();
-    let result = analyze_project(&cfg, "test").unwrap();
-    assert_eq!(result.project_id, "oil");
-    assert!(matches!(
-        result.directional_flow,
-        EvidenceSection::NotDeclared { .. }
-    ));
 }
 
 #[test]
@@ -96,22 +87,25 @@ fn spacex_full_flow_period_matches_frozen_headline() {
 }
 
 #[test]
-fn compare_three_real_projects_from_engine_states() {
+fn compare_real_onchain_projects_from_engine_states() {
     let mut results = Vec::new();
-    for id in ["spacex", "gold", "oil"] {
+    for id in ["spacex", "paxg_wtic_reference_2026_07_08"] {
         let cfg = load_project(root().join(format!("projects/{id}"))).unwrap();
         results.push(analyze_project(&cfg, "compare").unwrap());
     }
     let rows = compare_projects(&results);
-    assert_eq!(rows.len(), 3);
+    assert_eq!(rows.len(), 2);
     let spacex = rows.iter().find(|r| r.project_id == "spacex").unwrap();
-    let gold = rows.iter().find(|r| r.project_id == "gold").unwrap();
+    let paxg_wtic = rows
+        .iter()
+        .find(|r| r.project_id == "paxg_wtic_reference_2026_07_08")
+        .unwrap();
     assert_eq!(spacex.directional_flow.status, "observed");
     assert!(!spacex.directional_flow.coverage.is_empty());
     assert_eq!(spacex.directional_flow.coverage[0].observed_days, 43);
     assert_eq!(spacex.directional_flow.coverage[0].window_days, 56);
-    assert_eq!(gold.directional_flow.status, "not_declared");
-    assert_eq!(gold.route_evidence.status, "not_declared");
+    assert_eq!(paxg_wtic.directional_flow.status, "not_declared");
+    assert_eq!(paxg_wtic.route_evidence.status, "not_declared");
     let table = format_compare_table(&rows);
     assert!(table.contains("43/56"));
     assert!(table.contains("not_declared"));
@@ -146,6 +140,7 @@ fn detected_gaps_carry_analysis_section() {
         ));
     }
     assert!(detected.iter().any(|g| {
-        g.section == AnalysisSection::Flow && g.reason.contains("13 of 56 days missing")
+        g.section == AnalysisSection::Flow
+            && g.reason.contains("13 of 56 calendar sessions missing")
     }));
 }

@@ -3,7 +3,6 @@ resolver = "2"
 members = [
     "crates/shocktrace",
     "crates/shocktrace-cli",
-    "crates/fetch-gold-oil",
 ]
 default-members = [
     "crates/shocktrace",

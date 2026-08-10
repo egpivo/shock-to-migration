@@ -28,30 +28,21 @@ cargo run -p shocktrace-cli -- validate projects/spacex
 cargo run -p shocktrace-cli -- flows projects/spacex --format summary
 cargo run -p shocktrace-cli -- analyze projects/spacex --format json
 
-cargo run -p shocktrace-cli -- validate projects/gold
-cargo run -p shocktrace-cli -- respond projects/gold --format summary
-cargo run -p shocktrace-cli -- flows projects/gold --format summary   # not_declared (exit 0)
-cargo run -p shocktrace-cli -- analyze projects/oil --format json
+cargo run -p shocktrace-cli -- validate projects/paxg_wtic_reference_2026_07_08
+cargo run -p shocktrace-cli -- measure shock projects/paxg_wtic_reference_2026_07_08 --asset PAXG --format summary
+cargo run -p shocktrace-cli -- measure shock projects/paxg_wtic_reference_2026_07_08 --asset WTIC --format summary
+cargo run -p shocktrace-cli -- measure divergence projects/paxg_wtic_reference_2026_07_08 \
+  --asset-a PAXG --asset-b WTIC --format summary
 
-cargo run -p shocktrace-cli -- compare projects/spacex projects/gold projects/oil --format summary
-
-cargo run -p shocktrace-cli -- measure shock projects/gold --asset GLD --format summary
-cargo run -p shocktrace-cli -- measure shock projects/oil --asset CL --format summary
-cargo run -p shocktrace-cli -- measure divergence projects/gold_oil --asset-a GLD --asset-b CL --format summary
+cargo run -p shocktrace-cli -- compare projects/spacex projects/paxg_wtic_reference_2026_07_08 --format summary
 ```
 
 Exit codes: `0` on successful measurement **or** structured absence (`not_declared` / `not_observable`); `1` on validation/ingest/accounting errors.
 
 `respond` / `flows` / `analyze` each print an evidence boundary for the sections they show. A number without coverage context is incomplete output.
 
-Real cases live under `projects/`: SpaceX (linked mint-pair flow), Gold/Oil (frozen Yahoo daily response; GLD ETF + CL continuous), and `gold_oil` (paired for divergence). Fixtures under `tests/` remain architecture probes.
+Real cases live under `projects/`: SpaceX (linked mint-pair flow) and `paxg_wtic_reference_2026_07_08` (on-chain PAXG + WTIC public pools for 2026-07-08). This repository stores **on-chain freezes only** — no Yahoo/TradFi reference tapes. Fixtures under `tests/` remain architecture probes.
 
-To deliberately re-freeze gold/oil Yahoo CSVs (overwrites frozen inputs):
-
-```bash
-cargo run -p fetch-gold-oil -- --start 2024-05-01 --end 2025-10-15
-```
-
-Claim-gate for article numbers: `artifacts/claim_gate.csv`.
+Claim-gate for article numbers: `artifacts/claim_gate.csv` (verifier: `artifacts/articles/2026-09-01/verify_claims.py`).
 
 MIT — see `LICENSE`.

@@ -1,0 +1,15 @@
+{
+  "extracted_at": "2026-08-10T10:46:23Z",
+  "token_contract": "0x709ab533d18e652ecd56423d71c0241a0ee56a3b",
+  "network": "eth",
+  "rule": "Pools created strictly before 2026-07-08T00:00:00Z; post-event pools excluded",
+  "min_volume_usd_for_price": 100.0,
+  "pools": [
+    {
+      "pool_address": "0xdd109a10e918ed6bb51aef0f5650493f552ff0aa",
+      "name": "WTIC / USDC 0.3%",
+      "pool_created_at": "2026-03-11T07:41:35Z",
+      "note": "Only Ethereum WTIC/USDC pool existing before event; 0.05% pool created 2026-08-05 excluded"
+    }
+  ]
+}

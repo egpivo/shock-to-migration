@@ -15,8 +15,7 @@ use thiserror::Error;
 use crate::coverage::{AnalysisSection, CoverageGap, EvidenceBoundary, GapSource, MissingKind};
 use crate::evidence::EvidenceSection;
 use crate::flow::{
-    account_directional_flows, inclusive_day_count, DirectionalFlowObservation, FlowSeriesSummary,
-    FlowUnit,
+    account_directional_flows, DirectionalFlowObservation, FlowSeriesSummary, FlowUnit,
 };
 use crate::identity::AssetKey;
 use crate::ingest::daily_flows::load_daily_flow_rows;
@@ -273,17 +272,20 @@ fn compute_directional_flow(
 
     for route in &cfg.routes {
         let denominator = resolve_route_denominator(route, supply_rows.as_deref(), boundary)?;
+        let calendar = session_calendar_for_route(cfg, route);
 
         let Some(series) = by_route.remove(&route.id) else {
             for window in cfg.windows.iter().filter(|w| w.applies_to_flow()) {
+                let expected = window.expected_session_count(calendar);
                 boundary.push_detected(CoverageGap::detected(
                     AnalysisSection::Flow,
                     MissingKind::RouteAttribution,
                     format!("{}@{}", route.id, window.name),
                     format!(
-                        "no flow observations found for route in window '{}' (0 of {} days)",
+                        "no flow observations found for route in window '{}' (0 of {} {} sessions)",
                         window.name,
-                        inclusive_day_count(window)
+                        expected,
+                        calendar.coverage_label()
                     ),
                 ));
             }
@@ -297,30 +299,32 @@ fn compute_directional_flow(
                 .cloned()
                 .collect();
 
-            let window_days = inclusive_day_count(window);
+            let window_days = window.expected_session_count(calendar);
             if in_window.is_empty() {
                 boundary.push_detected(CoverageGap::detected(
                     AnalysisSection::Flow,
                     MissingKind::RouteAttribution,
                     format!("{}@{}", route.id, window.name),
                     format!(
-                        "no flow observations in window '{}' (0 of {window_days} days)",
-                        window.name
+                        "no flow observations in window '{}' (0 of {window_days} {} sessions)",
+                        window.name,
+                        calendar.coverage_label()
                     ),
                 ));
                 continue;
             }
 
-            let summary = account_directional_flows(in_window, window, denominator)?;
+            let summary = account_directional_flows(in_window, window, denominator, calendar)?;
             if summary.observed_days < summary.window_days {
                 boundary.push_detected(CoverageGap::detected(
                     AnalysisSection::Flow,
                     MissingKind::RouteAttribution,
                     format!("{}@{}", route.id, window.name),
                     format!(
-                        "{} of {} days missing in window '{}'",
+                        "{} of {} {} sessions missing in window '{}'",
                         summary.window_days - summary.observed_days,
                         summary.window_days,
+                        calendar.coverage_label(),
                         window.name
                     ),
                 ));
@@ -625,10 +629,18 @@ fn format_boundary_block(boundary: &EvidenceBoundary) -> String {
 }
 
 fn session_label(calendar: crate::event::SessionCalendar) -> &'static str {
-    match calendar {
-        crate::event::SessionCalendar::Continuous => "calendar",
-        crate::event::SessionCalendar::ExchangeSessions => "weekday",
-    }
+    calendar.coverage_label()
+}
+
+fn session_calendar_for_route(cfg: &ProjectConfig, route: &Route) -> crate::event::SessionCalendar {
+    // Coverage denominator follows the measured leg's asset calendar — the
+    // same SessionCalendar path used by market_response / measure.
+    let key = route.measured_asset();
+    cfg.assets
+        .iter()
+        .find(|a| &a.key == key)
+        .map(|a| a.session_calendar)
+        .unwrap_or_default()
 }
 
 fn format_section<T, F>(name: &str, section: &EvidenceSection<T>, fmt: F) -> String
@@ -1109,6 +1121,75 @@ c_b_swap,2026-06-12,100.0,60.0
     }
 
     #[test]
+    fn exchange_sessions_skips_weekend_in_flow_coverage() {
+        // Fri 2026-06-12 .. Sun 2026-06-14: calendar=3, weekdays=1 (Fri only).
+        let toml = r#"
+schema_version = 3
+project_id = "tradfi_flow"
+name = "tradfi flow"
+[event]
+id = "e"
+name = "e"
+timestamp = "2026-06-13T00:00:00Z"
+[[windows]]
+name = "event_weekend"
+start = "2026-06-12"
+end = "2026-06-14"
+applies_to = ["flow"]
+[[assets]]
+key = "A"
+chain = "tradfi"
+venue = "NYSE"
+instrument_id = "A"
+display_symbol = "A"
+session_calendar = "exchange_sessions"
+[[assets]]
+key = "B"
+chain = "tradfi"
+venue = "NYSE"
+instrument_id = "B"
+display_symbol = "B"
+session_calendar = "exchange_sessions"
+[[routes]]
+id = "a_b"
+source = "A"
+destination = "B"
+mechanism = "swap_pair"
+measurement = { unit = "token_native", unit_asset = "A", measured_leg = "source", attribution = "fixture" }
+[[route_evidence]]
+route_id = "a_b"
+documented = "issuer_named"
+technically_executable = "permissionless"
+observed_on_chain = "unknown"
+linkage_class = "unknown"
+[inputs]
+flows = "data/flows_daily.csv"
+"#;
+        let flows = "\
+route_id,day,gross_a_to_b,gross_b_to_a
+a_b,2026-06-12,10.0,0.0
+";
+        let dir = write_temp(toml, &[("data/flows_daily.csv", flows)]);
+        let cfg = crate::load_project(&dir).unwrap();
+        let result = analyze_project(&cfg, "test").unwrap();
+        let EvidenceSection::Available { data } = &result.directional_flow else {
+            panic!("expected available flow");
+        };
+        assert_eq!(data[0].window_days, 1);
+        assert_eq!(data[0].observed_days, 1);
+        assert!(
+            !result.boundary.missing.iter().any(|g| {
+                g.kind.to_string().contains("route_attribution")
+                    && g.reason.contains("missing")
+                    && g.scope.contains("event_weekend")
+            }),
+            "weekends must not be flow coverage gaps under exchange_sessions: {:?}",
+            result.boundary.missing
+        );
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
     fn partial_window_coverage_emits_gap() {
         let flows = "\
 route_id,day,gross_a_to_b,gross_b_to_a
@@ -1126,7 +1207,8 @@ a_b_swap,2026-06-13,10.0,0.0
         let cfg = crate::load_project(&dir).unwrap();
         let result = analyze_project(&cfg, "test").unwrap();
         assert!(result.boundary.missing.iter().any(|g| {
-            g.scope == "a_b_swap@post_event" && g.reason.contains("5 of 7 days missing")
+            g.scope == "a_b_swap@post_event"
+                && g.reason.contains("5 of 7 calendar sessions missing")
         }));
         let flows_txt = format_flows_summary(&result);
         assert!(
@@ -1134,7 +1216,7 @@ a_b_swap,2026-06-13,10.0,0.0
             "flows summary must expose boundary"
         );
         assert!(
-            flows_txt.contains("5 of 7 days missing"),
+            flows_txt.contains("5 of 7 calendar sessions missing"),
             "partial coverage must appear in flows summary, got:\n{flows_txt}"
         );
         assert!(flows_txt.contains("observed/window=2/7"));

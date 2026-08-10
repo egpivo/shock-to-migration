@@ -45,6 +45,16 @@ pub enum SessionCalendar {
     ExchangeSessions,
 }
 
+impl SessionCalendar {
+    /// Label used in coverage gap reason strings.
+    pub fn coverage_label(self) -> &'static str {
+        match self {
+            Self::Continuous => "calendar",
+            Self::ExchangeSessions => "weekday",
+        }
+    }
+}
+
 impl EventWindow {
     pub fn contains(&self, day: NaiveDate) -> bool {
         day >= self.start && day <= self.end

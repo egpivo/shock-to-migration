@@ -10,7 +10,7 @@ use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::event::EventWindow;
+use crate::event::{EventWindow, SessionCalendar};
 use crate::identity::AssetKey;
 
 /// Non-negative quantity in an explicit unit. Construction requires a value;
@@ -142,10 +142,14 @@ pub enum FlowError {
 ///
 /// Observations must already be filtered to the window. Duplicate `(route_id, day)`
 /// rows are rejected. Does **not** classify results as migration.
+///
+/// `session_calendar` selects the coverage denominator (`window_days`), matching
+/// [`crate::response::account_market_response`].
 pub fn account_directional_flows(
     mut observations: Vec<DirectionalFlowObservation>,
     window: &EventWindow,
     denominator: Option<Decimal>,
+    session_calendar: SessionCalendar,
 ) -> Result<FlowSeriesSummary, FlowError> {
     if observations.is_empty() {
         return Err(FlowError::EmptySeries("<unknown>".into()));
@@ -187,7 +191,7 @@ pub fn account_directional_flows(
         }
     }
 
-    let window_days = inclusive_day_count(window);
+    let window_days = window.expected_session_count(session_calendar);
 
     let mut gross_a_to_b_total = Quantity::zero();
     let mut gross_b_to_a_total = Quantity::zero();
@@ -275,8 +279,10 @@ pub fn account_directional_flows(
     })
 }
 
+/// Calendar-day inclusive length. Prefer [`EventWindow::expected_session_count`]
+/// with an explicit [`SessionCalendar`] for coverage denominators.
 pub fn inclusive_day_count(window: &EventWindow) -> usize {
-    (window.end - window.start).num_days() as usize + 1
+    window.calendar_day_count()
 }
 
 fn decimal_sign(value: Decimal) -> i8 {
@@ -327,8 +333,13 @@ mod tests {
             obs("2026-06-13", "50", "40"),
             obs("2026-06-14", "10", "30"),
         ];
-        let summary =
-            account_directional_flows(series, &window(), Some(Decimal::from(1000))).unwrap();
+        let summary = account_directional_flows(
+            series,
+            &window(),
+            Some(Decimal::from(1000)),
+            SessionCalendar::Continuous,
+        )
+        .unwrap();
         assert_eq!(summary.window_name, "post_event");
         assert_eq!(summary.window_days, 7);
         assert_eq!(summary.observed_days, 3);
@@ -350,9 +361,31 @@ mod tests {
     }
 
     #[test]
+    fn exchange_sessions_denominator_matches_response() {
+        // Fri..Sun window: continuous=3, weekdays=1.
+        let w = EventWindow {
+            name: "weekend".into(),
+            start: NaiveDate::from_str("2026-06-12").unwrap(),
+            end: NaiveDate::from_str("2026-06-14").unwrap(),
+            applies_to: crate::event::default_window_applies_to(),
+        };
+        let series = vec![obs("2026-06-12", "1", "0")];
+        let continuous =
+            account_directional_flows(series.clone(), &w, None, SessionCalendar::Continuous)
+                .unwrap();
+        let exchange =
+            account_directional_flows(series, &w, None, SessionCalendar::ExchangeSessions).unwrap();
+        assert_eq!(continuous.window_days, 3);
+        assert_eq!(exchange.window_days, 1);
+        assert_eq!(exchange.observed_days, 1);
+    }
+
+    #[test]
     fn missing_denominator_stays_none() {
         let series = vec![obs("2026-06-12", "10", "1")];
-        let summary = account_directional_flows(series, &window(), None).unwrap();
+        let summary =
+            account_directional_flows(series, &window(), None, SessionCalendar::Continuous)
+                .unwrap();
         assert!(summary.net_over_denominator.is_none());
     }
 
@@ -363,7 +396,9 @@ mod tests {
             obs("2026-06-13", "0", "15"),
             obs("2026-06-14", "20", "0"),
         ];
-        let summary = account_directional_flows(series, &window(), None).unwrap();
+        let summary =
+            account_directional_flows(series, &window(), None, SessionCalendar::Continuous)
+                .unwrap();
         assert_eq!(summary.sign_change_days, 2);
         assert_eq!(summary.net_total, Decimal::from(15));
         assert_eq!(summary.observations_cumulative_negative, 1);
@@ -385,7 +420,13 @@ mod tests {
     #[test]
     fn rejects_non_positive_denominator() {
         let series = vec![obs("2026-06-12", "1", "0")];
-        let err = account_directional_flows(series, &window(), Some(Decimal::ZERO)).unwrap_err();
+        let err = account_directional_flows(
+            series,
+            &window(),
+            Some(Decimal::ZERO),
+            SessionCalendar::Continuous,
+        )
+        .unwrap_err();
         assert!(matches!(err, FlowError::NonPositiveDenominator(_)));
     }
 
@@ -395,7 +436,8 @@ mod tests {
             obs("2026-06-12", "100", "20"),
             obs("2026-06-12", "100", "20"),
         ];
-        let err = account_directional_flows(series, &window(), None).unwrap_err();
+        let err = account_directional_flows(series, &window(), None, SessionCalendar::Continuous)
+            .unwrap_err();
         assert!(matches!(
             err,
             FlowError::DuplicateObservation { day, .. } if day == NaiveDate::from_str("2026-06-12").unwrap()
@@ -410,7 +452,9 @@ mod tests {
             obs("2026-06-13", "0", "20"),
             obs("2026-06-14", "0", "15"),
         ];
-        let summary = account_directional_flows(series, &window(), None).unwrap();
+        let summary =
+            account_directional_flows(series, &window(), None, SessionCalendar::Continuous)
+                .unwrap();
         assert_eq!(summary.net_total, Decimal::from(-75));
         assert_eq!(summary.peak_cumulative_net, Decimal::from(-40));
         assert_eq!(summary.trough_cumulative_net, Decimal::from(-75));
@@ -421,7 +465,9 @@ mod tests {
     #[test]
     fn reverse_only_series_reversal_ratio_is_none() {
         let series = vec![obs("2026-06-12", "0", "10")];
-        let summary = account_directional_flows(series, &window(), None).unwrap();
+        let summary =
+            account_directional_flows(series, &window(), None, SessionCalendar::Continuous)
+                .unwrap();
         assert!(summary.reversal_ratio.is_none());
         assert_eq!(summary.net_total, Decimal::from(-10));
     }

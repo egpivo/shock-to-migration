@@ -1,0 +1,170 @@
+{
+  "extracted_at": "2026-08-10T10:38:41Z",
+  "token_contract": "0x45804880de22913dafe09f4980848ece6ecbaf78",
+  "network": "eth",
+  "source": "https://api.geckoterminal.com/api/v2/networks/eth/tokens/0x45804880de22913dafe09f4980848ece6ecbaf78/pools?page=1",
+  "rule": "GeckoTerminal token pools page=1 at freeze time; addresses frozen before OHLCV aggregation",
+  "pool_count": 20,
+  "pools": [
+    {
+      "pool_address": "0xc756bba710d45647715079ce50aa16aab36ded42",
+      "name": "PAXG / XAUt 0.01%",
+      "quote_hint": "XAUt",
+      "reserve_in_usd_at_freeze": "5982212.9523",
+      "volume_h24_at_freeze": "1889360.06566328",
+      "dex_id": "uniswap_v3"
+    },
+    {
+      "pool_address": "0x9c4fe5ffd9a9fc5678cfbd93aa2d4fd684b67c4c",
+      "name": "PAXG / WETH",
+      "quote_hint": "WETH",
+      "reserve_in_usd_at_freeze": "13812700.036",
+      "volume_h24_at_freeze": "161168.401371882",
+      "dex_id": "uniswap_v2"
+    },
+    {
+      "pool_address": "0x5ae13baaef0620fdae1d355495dc51a17adb4082",
+      "name": "PAXG / USDC 0.05%",
+      "quote_hint": "USDC",
+      "reserve_in_usd_at_freeze": "2058485.4369",
+      "volume_h24_at_freeze": "385345.334482588",
+      "dex_id": "uniswap_v3"
+    },
+    {
+      "pool_address": "0x218c659b6bbb73d47c7926fc90d9893342534b84",
+      "name": "PAXG / XAUt",
+      "quote_hint": "XAUt",
+      "reserve_in_usd_at_freeze": "2183263.9101",
+      "volume_h24_at_freeze": "78181.7367513347",
+      "dex_id": "fluid-ethereum"
+    },
+    {
+      "pool_address": "0xed7ef9a9a05a48858a507c080def0405ad1eaa3e",
+      "name": "PAXG / XAUt 0.05%",
+      "quote_hint": "XAUt",
+      "reserve_in_usd_at_freeze": "3238522.4118",
+      "volume_h24_at_freeze": "32778.9527857158",
+      "dex_id": "uniswap_v3"
+    },
+    {
+      "pool_address": "0xb431c70f800100d87554ac1142c4a94c5fe4c0c4",
+      "name": "PAXG / USDC 0.3%",
+      "quote_hint": "USDC",
+      "reserve_in_usd_at_freeze": "1025308.6763",
+      "volume_h24_at_freeze": "33438.7288325264",
+      "dex_id": "uniswap_v3"
+    },
+    {
+      "pool_address": "0x6924d7319b4d74d2ce3a52e732ba1ba03d0100f848ce819a21be25b3085e39be",
+      "name": "PAXG / DAI 0.05%",
+      "quote_hint": "DAI",
+      "reserve_in_usd_at_freeze": "499564.6703",
+      "volume_h24_at_freeze": "67156.0514738705",
+      "dex_id": "uniswap-v4-ethereum"
+    },
+    {
+      "pool_address": "0x4bb2f1067164203bb9007338c523fa7c2fc69bc458c277d285a19650e8ef2239",
+      "name": "PAXG / XAUt 0.05%",
+      "quote_hint": "XAUt",
+      "reserve_in_usd_at_freeze": "4565066.7275",
+      "volume_h24_at_freeze": "5126.8270771408",
+      "dex_id": "uniswap-v4-ethereum"
+    },
+    {
+      "pool_address": "0xc58102cf5b0807c23601ac8abc2dc410f4b7846208d35e234950a1c150256acd",
+      "name": "PAXG / USDC 0.05%",
+      "quote_hint": "USDC",
+      "reserve_in_usd_at_freeze": "609848.5758",
+      "volume_h24_at_freeze": "37741.6444532896",
+      "dex_id": "uniswap-v4-ethereum"
+    },
+    {
+      "pool_address": "0x5c1a9a7329913354597817638e615e0ecb38ae13679125eb1a3b5953ed4612d4",
+      "name": "PAXG / XAUt 0.03%",
+      "quote_hint": "XAUt",
+      "reserve_in_usd_at_freeze": "973930.4026",
+      "volume_h24_at_freeze": "11239.2906413892",
+      "dex_id": "uniswap-v4-ethereum"
+    },
+    {
+      "pool_address": "0x940402a89d69e6403a4138d0cca6340f839882034a8649b41cb6bef652ee1095",
+      "name": "PAXG / ETH 0.3%",
+      "quote_hint": "ETH",
+      "reserve_in_usd_at_freeze": "215871.8944",
+      "volume_h24_at_freeze": "11869.934956145",
+      "dex_id": "uniswap-v4-ethereum"
+    },
+    {
+      "pool_address": "0xc48a38499a90e3b883c509ca08ec1b540cdf15ee",
+      "name": "XAUt / PAXG",
+      "quote_hint": "PAXG",
+      "reserve_in_usd_at_freeze": "824379.2829",
+      "volume_h24_at_freeze": "1858.5105467485",
+      "dex_id": "curve"
+    },
+    {
+      "pool_address": "0xcc708109490fc52a42a73adc891367b617255164f35eb575fb428b6cd27c2663",
+      "name": "PAXG / USDC 0.3%",
+      "quote_hint": "USDC",
+      "reserve_in_usd_at_freeze": "370304.1173",
+      "volume_h24_at_freeze": "3569.4640860452",
+      "dex_id": "uniswap-v4-ethereum"
+    },
+    {
+      "pool_address": "0x7a639b836be904a269f9a859b8ecd9eb7be3fb5f02953e7eeb129f9181642efd",
+      "name": "PAXG / XAUt 0.003%",
+      "quote_hint": "XAUt",
+      "reserve_in_usd_at_freeze": "47471.1494",
+      "volume_h24_at_freeze": "4329.7161159452",
+      "dex_id": "uniswap-v4-ethereum"
+    },
+    {
+      "pool_address": "0x2110275cae57a63d661626742bf0a459a7f43d44",
+      "name": "PAXG / USDC",
+      "quote_hint": "USDC",
+      "reserve_in_usd_at_freeze": "29603.5866",
+      "volume_h24_at_freeze": "5495.4636006425",
+      "dex_id": "supernova-cl"
+    },
+    {
+      "pool_address": "0x23189dcd24ab18f3467eee6b4d6ac27b3133d595b168a46f4344f2d569b04b35",
+      "name": "PAXG / WBTC",
+      "quote_hint": "WBTC",
+      "reserve_in_usd_at_freeze": "9492.706",
+      "volume_h24_at_freeze": "7025.0296400037",
+      "dex_id": "uniswap-v4-ethereum"
+    },
+    {
+      "pool_address": "0x609105e694ceff2c9c53273a6cc95ca225cb4017e3752ea600bad17eeeb6ebda",
+      "name": "PAXG / ETH",
+      "quote_hint": "ETH",
+      "reserve_in_usd_at_freeze": "7604.3351",
+      "volume_h24_at_freeze": "5981.2155048285",
+      "dex_id": "uniswap-v4-ethereum"
+    },
+    {
+      "pool_address": "0xb9dc85b6956f3bc96835db7debf673a07edd301c8eb2cbad16d86088052df71b",
+      "name": "PAXG / USDT 0.05%",
+      "quote_hint": "USDT",
+      "reserve_in_usd_at_freeze": "31219.1392",
+      "volume_h24_at_freeze": "946.784248341",
+      "dex_id": "uniswap-v4-ethereum"
+    },
+    {
+      "pool_address": "0x3c6adf92dbaf16f8cd1568d8919c0fda8cea6b00a2b5042ec7787e3082b9f664",
+      "name": "PAXG / XAUt",
+      "quote_hint": "XAUt",
+      "reserve_in_usd_at_freeze": "8650.1577",
+      "volume_h24_at_freeze": "1791.5332472567",
+      "dex_id": "uniswap-v4-ethereum"
+    },
+    {
+      "pool_address": "0x7cb85f75e61226060453a997a7733f76707df337",
+      "name": "PAXG / USDT 0.05%",
+      "quote_hint": "USDT",
+      "reserve_in_usd_at_freeze": "6748.4346",
+      "volume_h24_at_freeze": "882.3139072702",
+      "dex_id": "uniswap_v3"
+    }
+  ]
+}

@@ -139,10 +139,7 @@ fn session_calendar_for(cfg: &ProjectConfig, asset: &AssetKey) -> SessionCalenda
 }
 
 fn session_label(calendar: SessionCalendar) -> &'static str {
-    match calendar {
-        SessionCalendar::Continuous => "calendar",
-        SessionCalendar::ExchangeSessions => "weekday",
-    }
+    calendar.coverage_label()
 }
 
 /// Attach declared caveats + coverage for the windows this measure call uses,

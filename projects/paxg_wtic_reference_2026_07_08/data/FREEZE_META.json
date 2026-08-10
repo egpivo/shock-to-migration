@@ -1,0 +1,34 @@
+{
+  "extracted_at": "2026-08-10T10:46:23Z",
+  "event_day": "2026-07-08",
+  "range": [
+    "2026-01-11",
+    "2026-08-01"
+  ],
+  "onchain_only": true,
+  "assets": {
+    "PAXG": 203,
+    "WTIC": 113
+  },
+  "checksums": {
+    "response_daily.csv": "bf3a8ea83eb896964b41e83e0b4848408dc7dcc50e56785cf93f4125591b17a2",
+    "pools_frozen.json": "f4657a79710d58cb4d9970ee2379f0ec1e9cb2d5ffef77073adaef0559de3643",
+    "pool_surface_daily.csv": "b4bcbfb5349583a234308b984fb06b588f03d3be0b248b3eb4cb072920bf018c",
+    "pool_ohlcv_raw.json": "43d226778009611e9c9ed8f911551a83774e33ce94e51c8adc7d977df8a978a4",
+    "wtic_pools_frozen.json": "09fddcbbad019d568f6be1c99c75471bc8af5f7599f37be8fc08f1a55d663166",
+    "wtic_surface_daily.csv": "623985d69bfcb9ea74a91cbc3c92e822535ae9d73586b1e5ce51fd208be69b5b",
+    "wtic_pool_ohlcv_raw.json": "b8eec89d32c182b34c27273fc8d781b88284fe0f50ff41d8316b577b1e77946e",
+    "FREEZE_META.json": "5088ead18cf272836df7cb042ff40a246374e064cb7110a95001638f4787a8e8"
+  },
+  "price_rule": "PAXG price = volume-weighted close across frozen pools whose quote_hint is USDC/USDT/DAI; WTIC price from frozen WTIC/USDC pool when USD volume >= $100 else missing",
+  "volume_rule": "PAXG volume = sum of GeckoTerminal USD OHLCV across frozen Ethereum pools; WTIC volume = frozen pre-event WTIC/USDC pool USD OHLCV only",
+  "cutoff": "OHLCV day bucket = UTC date of GeckoTerminal candle timestamp",
+  "wtic_leg": {
+    "extracted_at_wtic": "2026-08-10T10:46:23Z",
+    "wtic_contract": "0x709ab533d18e652ecd56423d71c0241a0ee56a3b",
+    "wtic_pool_frozen": "0xdd109a10e918ed6bb51aef0f5650493f552ff0aa",
+    "min_volume_usd_for_price": 100.0,
+    "wtic_priced_rows": 90,
+    "backing_claim": "Issuer claims 1:1 WTI barrel backing via energy receipts; reserve backing treated as issuer claim unless named attestation is attached"
+  }
+}
