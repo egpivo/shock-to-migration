@@ -1,0 +1,87 @@
+schema_version = 2
+project_id = "synthetic_conduit"
+name = "Synthetic A↔B conduit (fixture)"
+
+[event]
+id = "synthetic_listing"
+name = "Synthetic listing shock"
+timestamp = "2026-06-12T14:00:00Z"
+
+[[windows]]
+name = "baseline"
+start = "2026-02-12"
+end = "2026-04-30"
+
+[[windows]]
+name = "post_event"
+start = "2026-06-12"
+end = "2026-06-18"
+
+[[assets]]
+key = "A"
+chain = "solana"
+mint = "SynthAAAAAAAAAAAAAAAAaaaaaaaaaaaaaaaaaaa"
+display_symbol = "AAA"
+issuer = "issuer_x"
+product_kind = "wrapper"
+underlying_ref = "SYNTH_CO"
+role = "source"
+
+[[assets]]
+key = "B"
+chain = "solana"
+mint = "SynthBBBBBBBBBBBBBBBBbbbbbbbbbbbbbbbbbbb"
+display_symbol = "BBB"
+issuer = "issuer_y"
+product_kind = "wrapper"
+underlying_ref = "SYNTH_CO"
+role = "destination"
+
+[[assets]]
+key = "C"
+chain = "solana"
+mint = "SynthCCCCCCCCCCCCCCCCccccccccccccccccc"
+display_symbol = "CCC"
+issuer = "issuer_x"
+product_kind = "wrapper"
+underlying_ref = "OTHER_CO"
+role = "control"
+
+[[routes]]
+id = "a_b_swap"
+source = "A"
+destination = "B"
+mechanism = "swap_pair"
+measurement = { unit = "token_native", unit_asset = "A", measured_leg = "source", attribution = "fixture", denominator = { type = "supply_snapshot", asset = "A", as_of = "2026-06-11" } }
+
+[[route_evidence]]
+route_id = "a_b_swap"
+documented = "issuer_named"
+technically_executable = "permissionless"
+observed_on_chain = "yes"
+restrictions = []
+linkage_class = "mint_pair_match"
+notes = "Fixture route. Documentation ≠ usage ≠ net migration."
+
+[[controls]]
+key = "C"
+relation = "same_issuer_different_underlying"
+
+[[coverage_declared]]
+kind = "off_chain_venue"
+scope = "B"
+reason = "CEX tape not present in fixtures"
+
+[[coverage_declared]]
+kind = "historical_depth"
+scope = "A"
+reason = "No historical depth series in v0.1 fixtures"
+
+[[coverage_declared]]
+kind = "trader_intent"
+scope = "a_b_swap"
+reason = "On-chain swaps establish state transitions, not trader intent"
+
+[inputs]
+flows = "data/flows_daily.csv"
+supply = "data/supply_daily.csv"
