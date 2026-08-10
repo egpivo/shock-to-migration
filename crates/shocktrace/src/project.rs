@@ -10,7 +10,7 @@ use thiserror::Error;
 
 use crate::control::{ControlAsset, ControlRelation};
 use crate::coverage::{CoverageGap, MissingKind};
-use crate::event::{Event, EventWindow};
+use crate::event::{default_window_applies_to, Event, EventWindow, WindowUse};
 use crate::flow::AttributionMethod;
 use crate::identity::{AssetId, AssetKey, AssetLocator, CanonicalAsset, ChainId, ProductKind};
 use crate::route::{
@@ -49,8 +49,16 @@ pub struct ProjectConfig {
     pub coverage_declared: Vec<CoverageGap>,
     pub response: Option<ResponseConfig>,
     pub inputs: InputPaths,
+    pub data_provenance: Option<DataProvenanceMeta>,
     #[serde(skip)]
     pub root: PathBuf,
+}
+
+/// Optional human-authored freeze notes (not a provenance platform).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DataProvenanceMeta {
+    pub source_description: Option<String>,
+    pub extracted_at: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -86,6 +94,8 @@ struct RawProject {
     coverage_declared: Vec<RawCoverage>,
     #[serde(default)]
     response: Option<RawResponse>,
+    #[serde(default)]
+    data_provenance: Option<RawDataProvenance>,
     inputs: RawInputs,
 }
 
@@ -101,6 +111,9 @@ struct RawWindow {
     name: String,
     start: NaiveDate,
     end: NaiveDate,
+    /// Omitted → both response and flow (documented default).
+    #[serde(default)]
+    applies_to: Option<Vec<String>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -213,6 +226,14 @@ struct RawInputs {
     supply: Option<String>,
     #[serde(default)]
     response: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RawDataProvenance {
+    #[serde(default)]
+    source_description: Option<String>,
+    #[serde(default)]
+    extracted_at: Option<String>,
 }
 
 /// Load and validate a project directory containing `project.toml`.
@@ -340,12 +361,37 @@ fn map_raw(raw: RawProject, root: PathBuf) -> Result<ProjectConfig, ProjectError
         windows: raw
             .windows
             .into_iter()
-            .map(|w| EventWindow {
-                name: w.name,
-                start: w.start,
-                end: w.end,
+            .map(|w| {
+                let applies_to = match w.applies_to {
+                    None => default_window_applies_to(),
+                    Some(items) => {
+                        let mut out = Vec::new();
+                        for item in items {
+                            match item.as_str() {
+                                "response" => out.push(WindowUse::Response),
+                                "flow" => out.push(WindowUse::Flow),
+                                other => {
+                                    return Err(ProjectError::Validation(format!(
+                                        "window '{}': unrecognized applies_to '{other}' (expected response|flow)",
+                                        w.name
+                                    )));
+                                }
+                            }
+                        }
+                        // Dedup while preserving order
+                        let mut seen = HashSet::new();
+                        out.retain(|u| seen.insert(*u));
+                        out
+                    }
+                };
+                Ok(EventWindow {
+                    name: w.name,
+                    start: w.start,
+                    end: w.end,
+                    applies_to,
+                })
             })
-            .collect(),
+            .collect::<Result<Vec<_>, ProjectError>>()?,
         assets,
         routes,
         route_evidence,
@@ -357,6 +403,10 @@ fn map_raw(raw: RawProject, root: PathBuf) -> Result<ProjectConfig, ProjectError
             supply: raw.inputs.supply,
             response: raw.inputs.response,
         },
+        data_provenance: raw.data_provenance.map(|p| DataProvenanceMeta {
+            source_description: p.source_description,
+            extracted_at: p.extracted_at,
+        }),
         root,
     })
 }
@@ -529,6 +579,17 @@ pub fn validate_project(cfg: &ProjectConfig) -> Result<(), ProjectError> {
                 resp.baseline_window
             )));
         }
+        let baseline = cfg
+            .windows
+            .iter()
+            .find(|w| w.name == resp.baseline_window)
+            .expect("window name checked");
+        if !baseline.applies_to_response() {
+            return Err(ProjectError::Validation(format!(
+                "response.baseline_window '{}' must include applies_to response",
+                resp.baseline_window
+            )));
+        }
         if cfg.inputs.response.is_none() {
             return Err(ProjectError::Validation(
                 "[response] requires inputs.response".into(),
@@ -549,6 +610,18 @@ pub fn validate_project(cfg: &ProjectConfig) -> Result<(), ProjectError> {
                 "inputs.response requires a [response] table (baseline_window)".into(),
             ));
         }
+        if !cfg.windows.iter().any(|w| w.applies_to_response()) {
+            return Err(ProjectError::Validation(
+                "inputs.response requires at least one window with applies_to including response"
+                    .into(),
+            ));
+        }
+    }
+
+    if !cfg.routes.is_empty() && !cfg.windows.iter().any(|w| w.applies_to_flow()) {
+        return Err(ProjectError::Validation(
+            "declared routes require at least one window with applies_to including flow".into(),
+        ));
     }
 
     for control in &cfg.controls {

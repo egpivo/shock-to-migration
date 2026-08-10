@@ -15,6 +15,10 @@ pub struct ProvenanceRecord {
     pub metric_definition_id: String,
     pub command: String,
     pub computed_at_unix: i64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_description: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_extracted_at: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

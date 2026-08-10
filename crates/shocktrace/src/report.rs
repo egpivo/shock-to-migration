@@ -12,7 +12,7 @@ use rust_decimal::Decimal;
 use serde::Serialize;
 use thiserror::Error;
 
-use crate::coverage::{CoverageGap, EvidenceBoundary, GapSource, MissingKind};
+use crate::coverage::{AnalysisSection, CoverageGap, EvidenceBoundary, GapSource, MissingKind};
 use crate::evidence::EvidenceSection;
 use crate::flow::{
     account_directional_flows, inclusive_day_count, DirectionalFlowObservation, FlowSeriesSummary,
@@ -119,7 +119,8 @@ fn compute_market_response(
         by_asset.entry(row.asset_key.clone()).or_default().push(row);
     }
     for asset in undeclared_assets {
-        boundary.push_detected(CoverageGap::new(
+        boundary.push_detected(CoverageGap::detected(
+            AnalysisSection::Response,
             MissingKind::Other("undeclared_response_asset".into()),
             asset.as_str().to_string(),
             "response row asset_key not in project assets",
@@ -141,13 +142,17 @@ fn compute_market_response(
             .collect();
 
         for window in &cfg.windows {
+            if !window.applies_to_response() {
+                continue;
+            }
             let in_window: Vec<_> = series
                 .iter()
                 .filter(|o| window.contains(o.day))
                 .cloned()
                 .collect();
             if in_window.is_empty() {
-                boundary.push_detected(CoverageGap::new(
+                boundary.push_detected(CoverageGap::detected(
+                    AnalysisSection::Response,
                     MissingKind::Other("response_coverage".into()),
                     format!("{}@{}", asset_key, window.name),
                     format!(
@@ -164,7 +169,8 @@ fn compute_market_response(
                 summary.baseline_normalized_volume = None;
             }
             if summary.observed_days < summary.window_days {
-                boundary.push_detected(CoverageGap::new(
+                boundary.push_detected(CoverageGap::detected(
+                    AnalysisSection::Response,
                     MissingKind::Other("response_coverage".into()),
                     format!("{}@{}", asset_key, window.name),
                     format!(
@@ -255,8 +261,9 @@ fn compute_directional_flow(
         let denominator = resolve_route_denominator(route, supply_rows.as_deref(), boundary)?;
 
         let Some(series) = by_route.remove(&route.id) else {
-            for window in &cfg.windows {
-                boundary.push_detected(CoverageGap::new(
+            for window in cfg.windows.iter().filter(|w| w.applies_to_flow()) {
+                boundary.push_detected(CoverageGap::detected(
+                    AnalysisSection::Flow,
                     MissingKind::RouteAttribution,
                     format!("{}@{}", route.id, window.name),
                     format!(
@@ -269,7 +276,7 @@ fn compute_directional_flow(
             continue;
         };
 
-        for window in &cfg.windows {
+        for window in cfg.windows.iter().filter(|w| w.applies_to_flow()) {
             let in_window: Vec<_> = series
                 .iter()
                 .filter(|o| window.contains(o.day))
@@ -278,7 +285,8 @@ fn compute_directional_flow(
 
             let window_days = inclusive_day_count(window);
             if in_window.is_empty() {
-                boundary.push_detected(CoverageGap::new(
+                boundary.push_detected(CoverageGap::detected(
+                    AnalysisSection::Flow,
                     MissingKind::RouteAttribution,
                     format!("{}@{}", route.id, window.name),
                     format!(
@@ -291,7 +299,8 @@ fn compute_directional_flow(
 
             let summary = account_directional_flows(in_window, window, denominator)?;
             if summary.observed_days < summary.window_days {
-                boundary.push_detected(CoverageGap::new(
+                boundary.push_detected(CoverageGap::detected(
+                    AnalysisSection::Flow,
                     MissingKind::RouteAttribution,
                     format!("{}@{}", route.id, window.name),
                     format!(
@@ -307,16 +316,22 @@ fn compute_directional_flow(
 
         let outside_days: BTreeSet<_> = series
             .iter()
-            .filter(|o| !cfg.windows.iter().any(|w| w.contains(o.day)))
+            .filter(|o| {
+                !cfg.windows
+                    .iter()
+                    .filter(|w| w.applies_to_flow())
+                    .any(|w| w.contains(o.day))
+            })
             .map(|o| o.day)
             .collect();
         if !outside_days.is_empty() {
             let sample: Vec<_> = outside_days.iter().take(5).map(|d| d.to_string()).collect();
-            boundary.push_detected(CoverageGap::new(
+            boundary.push_detected(CoverageGap::detected(
+                AnalysisSection::Flow,
                 MissingKind::RouteAttribution,
                 route.id.clone(),
                 format!(
-                    "{} observation day(s) outside all declared windows (e.g. {})",
+                    "{} observation day(s) outside all declared flow windows (e.g. {})",
                     outside_days.len(),
                     sample.join(", ")
                 ),
@@ -325,7 +340,8 @@ fn compute_directional_flow(
     }
 
     for extra_route in undeclared_routes {
-        boundary.push_detected(CoverageGap::new(
+        boundary.push_detected(CoverageGap::detected(
+            AnalysisSection::Flow,
             MissingKind::RouteAttribution,
             extra_route,
             "flow observations reference a route_id not declared in project.toml",
@@ -362,7 +378,8 @@ fn resolve_route_denominator(
     };
 
     let Some(rows) = supply_rows else {
-        boundary.push_detected(CoverageGap::new(
+        boundary.push_detected(CoverageGap::detected(
+            AnalysisSection::Flow,
             MissingKind::Supply,
             format!("{}:{}", route.id, asset),
             "denominator requested but inputs.supply missing",
@@ -373,7 +390,8 @@ fn resolve_route_denominator(
     match supply_on(rows, asset, *as_of) {
         Ok(value) => Ok(Some(value)),
         Err(e) => {
-            boundary.push_detected(CoverageGap::new(
+            boundary.push_detected(CoverageGap::detected(
+                AnalysisSection::Flow,
                 MissingKind::Supply,
                 format!("{}:{}", route.id, asset),
                 e.to_string(),
@@ -420,6 +438,14 @@ fn build_provenance(cfg: &ProjectConfig, command: &str) -> Result<ProvenanceReco
         metric_definition_id: metric,
         command: command.to_string(),
         computed_at_unix: Utc::now().timestamp(),
+        source_description: cfg
+            .data_provenance
+            .as_ref()
+            .and_then(|p| p.source_description.clone()),
+        data_extracted_at: cfg
+            .data_provenance
+            .as_ref()
+            .and_then(|p| p.extracted_at.clone()),
     })
 }
 
@@ -503,16 +529,23 @@ enum GapFilter {
 }
 
 fn filter_boundary(boundary: &EvidenceBoundary, filter: GapFilter) -> EvidenceBoundary {
-    // Author-declared caveats always pass through. Only runtime-detected gaps
-    // are filtered by the section that produced them.
+    // Author-declared caveats always pass through. Detected gaps keep the
+    // AnalysisSection stamped when they were created — never inferred from MissingKind.
     let missing = boundary
         .missing
         .iter()
         .filter(|g| match g.source {
             GapSource::Declared => true,
             GapSource::Detected => match filter {
-                GapFilter::Response => is_response_gap(g),
-                GapFilter::Flow => is_flow_gap(g),
+                GapFilter::Response => {
+                    matches!(
+                        g.section,
+                        AnalysisSection::Response | AnalysisSection::General
+                    )
+                }
+                GapFilter::Flow => {
+                    matches!(g.section, AnalysisSection::Flow | AnalysisSection::General)
+                }
             },
         })
         .cloned()
@@ -523,21 +556,6 @@ fn filter_boundary(boundary: &EvidenceBoundary, filter: GapFilter) -> EvidenceBo
     }
 }
 
-fn is_response_gap(gap: &CoverageGap) -> bool {
-    match &gap.kind {
-        MissingKind::Price => true,
-        MissingKind::Other(s) => s == "response_coverage" || s == "undeclared_response_asset",
-        _ => false,
-    }
-}
-
-fn is_flow_gap(gap: &CoverageGap) -> bool {
-    matches!(
-        gap.kind,
-        MissingKind::RouteAttribution | MissingKind::Supply
-    )
-}
-
 fn format_response_rows(data: &[ResponseSeriesSummary]) -> Vec<String> {
     data.iter()
         .map(|s| {
@@ -545,8 +563,8 @@ fn format_response_rows(data: &[ResponseSeriesSummary]) -> Vec<String> {
                 "  {} @ {}: price_return={} norm_vol={} observed/window={}/{}",
                 s.asset_key,
                 s.window_name,
-                opt_dec(s.price_return),
-                opt_dec(s.baseline_normalized_volume),
+                opt_ratio(s.price_return),
+                opt_ratio(s.baseline_normalized_volume),
                 s.observed_days,
                 s.window_days
             )
@@ -573,15 +591,16 @@ fn format_flow_rows(data: &[FlowSeriesSummary]) -> Vec<String> {
     data.iter()
         .map(|s| {
             format!(
-                "  {} @ {}: net={} peak={} trough={} net/denom={} observed/window={}/{}",
+                "  {} @ {}: net={} peak={} trough={} net/denom={} observed/window={}/{} obs_cum_neg={}",
                 s.route_id,
                 s.window_name,
-                s.net_total,
-                s.peak_cumulative_net,
-                s.trough_cumulative_net,
-                opt_dec(s.net_over_denominator),
+                fmt_qty(s.net_total),
+                fmt_qty(s.peak_cumulative_net),
+                fmt_qty(s.trough_cumulative_net),
+                opt_ratio(s.net_over_denominator),
                 s.observed_days,
-                s.window_days
+                s.window_days,
+                s.observations_cumulative_negative
             )
         })
         .collect()
@@ -621,9 +640,21 @@ where
     }
 }
 
-fn opt_dec(v: Option<Decimal>) -> String {
+/// Summary display precision (presentation only; accounting uses full Decimal).
+const SUMMARY_QTY_DP: u32 = 4;
+const SUMMARY_RATIO_DP: u32 = 6;
+
+fn fmt_qty(v: Decimal) -> String {
+    v.round_dp(SUMMARY_QTY_DP).normalize().to_string()
+}
+
+fn fmt_ratio(v: Decimal) -> String {
+    v.round_dp(SUMMARY_RATIO_DP).normalize().to_string()
+}
+
+fn opt_ratio(v: Option<Decimal>) -> String {
     match v {
-        Some(d) => d.to_string(),
+        Some(d) => fmt_ratio(d),
         None => "null".into(),
     }
 }
@@ -632,20 +663,159 @@ fn opt_dec(v: Option<Decimal>) -> String {
 pub fn ladder_status(result: &AnalysisResult) -> LadderRow {
     LadderRow {
         project_id: result.project_id.clone(),
-        market_response: section_label(&result.market_response),
-        route_evidence: section_label(&result.route_evidence),
-        directional_flow: section_label(&result.directional_flow),
+        market_response: response_ladder(result),
+        route_evidence: SectionLadder {
+            status: section_label(&result.route_evidence),
+            coverage: Vec::new(),
+            outside_declared_windows: None,
+        },
+        directional_flow: flow_ladder(result),
         claim_boundary: claim_boundary(result),
+    }
+}
+
+fn response_ladder(result: &AnalysisResult) -> SectionLadder {
+    let coverage = match &result.market_response {
+        EvidenceSection::Available { data } => data
+            .iter()
+            .map(|s| WindowCoverage {
+                scope: format!("{}@{}", s.asset_key, s.window_name),
+                observed_days: s.observed_days,
+                window_days: s.window_days,
+            })
+            .collect(),
+        _ => Vec::new(),
+    };
+    SectionLadder {
+        status: section_label(&result.market_response),
+        coverage,
+        outside_declared_windows: None,
+    }
+}
+
+fn flow_ladder(result: &AnalysisResult) -> SectionLadder {
+    let coverage = match &result.directional_flow {
+        EvidenceSection::Available { data } => data
+            .iter()
+            .map(|s| WindowCoverage {
+                scope: format!("{}@{}", s.route_id, s.window_name),
+                observed_days: s.observed_days,
+                window_days: s.window_days,
+            })
+            .collect(),
+        _ => Vec::new(),
+    };
+    let outside = result.boundary.missing.iter().find_map(|g| {
+        if g.source == GapSource::Detected
+            && g.section == AnalysisSection::Flow
+            && g.reason.contains("outside all declared flow windows")
+        {
+            g.reason
+                .split_whitespace()
+                .next()
+                .and_then(|n| n.parse::<usize>().ok())
+        } else {
+            None
+        }
+    });
+    SectionLadder {
+        status: section_label(&result.directional_flow),
+        coverage,
+        outside_declared_windows: outside,
+    }
+}
+
+/// Build ladder rows from already-computed analysis results (no hard-coded cases).
+pub fn compare_projects(results: &[AnalysisResult]) -> Vec<LadderRow> {
+    results.iter().map(ladder_status).collect()
+}
+
+pub fn format_compare_table(rows: &[LadderRow]) -> String {
+    let mut lines = vec![
+        "| Case | Market response | Route evidence | Directional flow | What can be claimed |"
+            .into(),
+        "|---|---|---|---|---|".into(),
+    ];
+    for row in rows {
+        lines.push(format!(
+            "| {} | {} | {} | {} | {} |",
+            row.project_id,
+            format_section_cell(&row.market_response),
+            format_section_cell(&row.route_evidence),
+            format_section_cell(&row.directional_flow),
+            row.claim_boundary
+        ));
+    }
+    lines.push(String::new());
+    lines.push("Per-window coverage (observed/window_days):".into());
+    for row in rows {
+        lines.push(format!("### {}", row.project_id));
+        append_coverage_lines(&mut lines, "response", &row.market_response);
+        append_coverage_lines(&mut lines, "flow", &row.directional_flow);
+    }
+    lines.push(String::new());
+    lines.push(
+        "States come from engine EvidenceSection availability. Absence is not zero flow and not a migration verdict. Summary ratios use 6 dp; quantities use 4 dp (JSON retains full precision)."
+            .into(),
+    );
+    lines.join("\n")
+}
+
+fn format_section_cell(section: &SectionLadder) -> String {
+    if section.coverage.is_empty() {
+        return section.status.clone();
+    }
+    let bits: Vec<String> = section
+        .coverage
+        .iter()
+        .map(|c| format!("{} {}/{}", c.scope, c.observed_days, c.window_days))
+        .collect();
+    let mut s = format!("{} [{}]", section.status, bits.join("; "));
+    if let Some(n) = section.outside_declared_windows {
+        s.push_str(&format!(" outside_flow_windows={n}"));
+    }
+    s
+}
+
+fn append_coverage_lines(lines: &mut Vec<String>, label: &str, section: &SectionLadder) {
+    lines.push(format!("- {label}: status={}", section.status));
+    if section.coverage.is_empty() {
+        lines.push("  coverage: (none)".into());
+    } else {
+        for c in &section.coverage {
+            lines.push(format!(
+                "  coverage: {} {}/{}",
+                c.scope, c.observed_days, c.window_days
+            ));
+        }
+    }
+    if let Some(n) = section.outside_declared_windows {
+        lines.push(format!("  outside_declared_windows: {n}"));
     }
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub struct LadderRow {
     pub project_id: String,
-    pub market_response: String,
-    pub route_evidence: String,
-    pub directional_flow: String,
+    pub market_response: SectionLadder,
+    pub route_evidence: SectionLadder,
+    pub directional_flow: SectionLadder,
     pub claim_boundary: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SectionLadder {
+    pub status: String,
+    pub coverage: Vec<WindowCoverage>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub outside_declared_windows: Option<usize>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct WindowCoverage {
+    pub scope: String,
+    pub observed_days: usize,
+    pub window_days: usize,
 }
 
 fn section_label<T>(section: &EvidenceSection<T>) -> String {
@@ -978,7 +1148,7 @@ a_b_swap,2026-06-12,10.0,1.0
         assert_eq!(post.observed_days, 1);
         assert_eq!(post.net_total, Decimal::from(9));
         assert!(result.boundary.missing.iter().any(|g| {
-            g.scope == "a_b_swap" && g.reason.contains("outside all declared windows")
+            g.scope == "a_b_swap" && g.reason.contains("outside all declared flow windows")
         }));
         let _ = fs::remove_dir_all(dir);
     }
@@ -1030,6 +1200,8 @@ XX_GHOST,2026-06-13,2,2
             .filter(|g| g.scope == "XX_GHOST")
             .collect();
         assert_eq!(ghost_gaps.len(), 1);
+        assert_eq!(ghost_gaps[0].section, AnalysisSection::Response);
+        assert_eq!(ghost_gaps[0].source, GapSource::Detected);
         let respond_txt = format_respond_summary(&result);
         assert!(respond_txt.contains("evidence boundary:"));
         assert!(respond_txt.contains("XX_GHOST"));

@@ -1,0 +1,53 @@
+schema_version = 3
+project_id = "gold"
+name = "Gold response-only (frozen sample; not historical COMEX fact)"
+
+[event]
+id = "gold_shock_frozen"
+name = "Frozen gold shock window (research-selected outside engine)"
+timestamp = "2026-06-12T14:00:00Z"
+
+[[windows]]
+name = "baseline"
+start = "2026-06-01"
+end = "2026-06-05"
+
+[[windows]]
+name = "event"
+start = "2026-06-12"
+end = "2026-06-16"
+
+[[assets]]
+key = "GC"
+chain = "tradfi"
+venue = "COMEX"
+instrument_id = "GC_FRONT_FROZEN_SAMPLE"
+display_symbol = "GC"
+product_kind = "unknown"
+underlying_ref = "gold_exposure_not_canonical"
+role = "primary"
+
+[[coverage_declared]]
+kind = "route_attribution"
+scope = "gold"
+reason = "No linked capital-migration route is declared or observable in this project"
+
+[[coverage_declared]]
+kind = "trader_intent"
+scope = "GC"
+reason = "Price/volume series do not identify trader intent or source of capital"
+
+[[coverage_declared]]
+kind = "actor_linkage"
+scope = "GC"
+reason = "Cross-market investor identity is not observed"
+
+[response]
+baseline_window = "baseline"
+
+[data_provenance]
+source_description = "Frozen local CSV sample for architecture/generalization. Explicitly not a historical COMEX tape or live API extract."
+extracted_at = "2026-08-10T00:00:00Z"
+
+[inputs]
+response = "data/response_daily.csv"

@@ -1,4 +1,4 @@
-//! shocktrace CLI — validate / respond / flows / analyze.
+//! shocktrace CLI — validate / respond / flows / analyze / compare.
 
 use std::env;
 use std::path::PathBuf;
@@ -7,8 +7,8 @@ use std::process::ExitCode;
 use clap::{Parser, Subcommand, ValueEnum};
 use shocktrace::load_project;
 use shocktrace::report::{
-    analyze_project, flows_view, format_flows_summary, format_respond_summary, format_summary,
-    respond_view,
+    analyze_project, compare_projects, flows_view, format_compare_table, format_flows_summary,
+    format_respond_summary, format_summary, respond_view,
 };
 
 #[derive(Parser, Debug)]
@@ -41,6 +41,12 @@ enum Commands {
     Analyze {
         project: PathBuf,
         #[arg(long, value_enum, default_value_t = OutputFormat::Json)]
+        format: OutputFormat,
+    },
+    /// Compare evidence-ladder states across projects (no migration verdict).
+    Compare {
+        projects: Vec<PathBuf>,
+        #[arg(long, value_enum, default_value_t = OutputFormat::Summary)]
         format: OutputFormat,
     },
 }
@@ -97,7 +103,6 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     println!("{}", serde_json::to_string_pretty(&flows_view(&result))?);
                 }
             }
-            // Exit 0: not_declared / not_observable are successful structured answers.
         }
         Commands::Analyze { project, format } => {
             let cfg = load_project(&project)?;
@@ -105,6 +110,21 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             match format {
                 OutputFormat::Summary => println!("{}", format_summary(&result)),
                 OutputFormat::Json => println!("{}", serde_json::to_string_pretty(&result)?),
+            }
+        }
+        Commands::Compare { projects, format } => {
+            if projects.is_empty() {
+                return Err("compare requires at least one project path".into());
+            }
+            let mut results = Vec::new();
+            for path in &projects {
+                let cfg = load_project(path)?;
+                results.push(analyze_project(&cfg, &argv_command())?);
+            }
+            let rows = compare_projects(&results);
+            match format {
+                OutputFormat::Summary => println!("{}", format_compare_table(&rows)),
+                OutputFormat::Json => println!("{}", serde_json::to_string_pretty(&rows)?),
             }
         }
     }

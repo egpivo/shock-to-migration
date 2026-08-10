@@ -103,8 +103,10 @@ pub struct FlowSeriesSummary {
     pub peak_cumulative_net: Decimal,
     /// Minimum of the observed cumulative path.
     pub trough_cumulative_net: Decimal,
-    /// Count of cumulative points strictly below zero.
-    pub days_cumulative_negative: u32,
+    /// Count of **observed cumulative path points** strictly below zero.
+    ///
+    /// Not a calendar-day count; does not carry forward across missing/no-trade dates.
+    pub observations_cumulative_negative: u32,
     /// Reverse gross per unit of forward gross: `B→A / A→B` when A→B > 0; else `None`.
     /// Values > 1 mean reverse-dominant traffic, not a percentage capped at 100%.
     pub reversal_ratio: Option<Decimal>,
@@ -192,7 +194,7 @@ pub fn account_directional_flows(
     let mut cumulative_path = Vec::with_capacity(observations.len());
     let mut sign_change_days = 0u32;
     let mut prev_sign: Option<i8> = None;
-    let mut days_cumulative_negative = 0u32;
+    let mut observations_cumulative_negative = 0u32;
 
     // Initialize peak/trough from the first day's cumulative (series is non-empty).
     let first = &observations[0];
@@ -202,7 +204,7 @@ pub fn account_directional_flows(
     let mut peak = cumulative;
     let mut trough = cumulative;
     if cumulative < Decimal::ZERO {
-        days_cumulative_negative += 1;
+        observations_cumulative_negative += 1;
     }
     let first_sign = decimal_sign(cumulative);
     if first_sign != 0 {
@@ -223,7 +225,7 @@ pub fn account_directional_flows(
         trough = trough.min(cumulative);
 
         if cumulative < Decimal::ZERO {
-            days_cumulative_negative += 1;
+            observations_cumulative_negative += 1;
         }
 
         let sign = decimal_sign(cumulative);
@@ -264,7 +266,7 @@ pub fn account_directional_flows(
         cumulative_path,
         peak_cumulative_net: peak,
         trough_cumulative_net: trough,
-        days_cumulative_negative,
+        observations_cumulative_negative,
         reversal_ratio,
         net_over_denominator,
         sign_change_days,
@@ -301,6 +303,7 @@ mod tests {
             name: "post_event".into(),
             start: NaiveDate::from_str("2026-06-12").unwrap(),
             end: NaiveDate::from_str("2026-06-18").unwrap(),
+            applies_to: crate::event::default_window_applies_to(),
         }
     }
 
@@ -342,7 +345,7 @@ mod tests {
         );
         assert_eq!(summary.peak_cumulative_net, Decimal::from(90)); // 80 then 90 then 70
         assert_eq!(summary.trough_cumulative_net, Decimal::from(70));
-        assert_eq!(summary.days_cumulative_negative, 0);
+        assert_eq!(summary.observations_cumulative_negative, 0);
         assert!(summary.interpretation_boundary.contains("not migration"));
     }
 
@@ -363,7 +366,7 @@ mod tests {
         let summary = account_directional_flows(series, &window(), None).unwrap();
         assert_eq!(summary.sign_change_days, 2);
         assert_eq!(summary.net_total, Decimal::from(15));
-        assert_eq!(summary.days_cumulative_negative, 1);
+        assert_eq!(summary.observations_cumulative_negative, 1);
         assert_eq!(summary.trough_cumulative_net, Decimal::from(-5));
     }
 
@@ -411,7 +414,7 @@ mod tests {
         assert_eq!(summary.net_total, Decimal::from(-75));
         assert_eq!(summary.peak_cumulative_net, Decimal::from(-40));
         assert_eq!(summary.trough_cumulative_net, Decimal::from(-75));
-        assert_eq!(summary.days_cumulative_negative, 3);
+        assert_eq!(summary.observations_cumulative_negative, 3);
         assert!(summary.reversal_ratio.is_none()); // forward gross is zero
     }
 

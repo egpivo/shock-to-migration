@@ -40,9 +40,22 @@ impl fmt::Display for MissingKind {
 pub enum GapSource {
     /// From `[[coverage_declared]]`. Always shown on section outputs.
     Declared,
-    /// Produced by response/flow accounting. Filtered by section relevance.
+    /// Produced by response/flow accounting. Filtered by analysis section.
     #[default]
     Detected,
+}
+
+/// Analysis stage that produced a runtime-detected gap.
+///
+/// Declared gaps use [`AnalysisSection::General`] and remain visible on every
+/// section report. Filtering must not infer section from [`MissingKind`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum AnalysisSection {
+    Response,
+    Flow,
+    #[default]
+    General,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -52,16 +65,29 @@ pub struct CoverageGap {
     pub reason: String,
     #[serde(default)]
     pub source: GapSource,
+    #[serde(default)]
+    pub section: AnalysisSection,
 }
 
 impl CoverageGap {
-    pub fn new(kind: MissingKind, scope: impl Into<String>, reason: impl Into<String>) -> Self {
+    pub fn detected(
+        section: AnalysisSection,
+        kind: MissingKind,
+        scope: impl Into<String>,
+        reason: impl Into<String>,
+    ) -> Self {
         Self {
             kind,
             scope: scope.into(),
             reason: reason.into(),
             source: GapSource::Detected,
+            section,
         }
+    }
+
+    /// Compatibility constructor; defaults to [`AnalysisSection::General`].
+    pub fn new(kind: MissingKind, scope: impl Into<String>, reason: impl Into<String>) -> Self {
+        Self::detected(AnalysisSection::General, kind, scope, reason)
     }
 }
 
@@ -75,6 +101,7 @@ impl EvidenceBoundary {
     pub fn merge_declared(&mut self, gaps: impl IntoIterator<Item = CoverageGap>) {
         self.missing.extend(gaps.into_iter().map(|mut gap| {
             gap.source = GapSource::Declared;
+            gap.section = AnalysisSection::General;
             gap
         }));
     }

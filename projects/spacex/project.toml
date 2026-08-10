@@ -1,0 +1,94 @@
+schema_version = 3
+project_id = "spacex"
+name = "SpaceX SPACEX↔SPCXx mint-pair route traffic (frozen processed extract)"
+
+[event]
+id = "spacex_nasdaq_first_trade"
+name = "SpaceX Nasdaq first trade (focal date from frozen research ledger)"
+timestamp = "2026-06-12T14:00:00Z"
+
+[[windows]]
+name = "baseline"
+start = "2026-02-12"
+end = "2026-04-30"
+applies_to = ["response"]
+
+[[windows]]
+name = "event_week"
+start = "2026-06-12"
+end = "2026-06-19"
+applies_to = ["response"]
+
+[[windows]]
+name = "full_flow_period"
+start = "2026-06-12"
+end = "2026-08-06"
+applies_to = ["flow"]
+
+[[assets]]
+key = "SPACEX"
+chain = "solana"
+mint = "PreANxuXjsy2pvisWWMNB6YaJNzr7681wJJr2rHsfTh"
+display_symbol = "SPACEX"
+issuer = "PreStocks"
+product_kind = "wrapper"
+underlying_ref = "SpaceX"
+role = "source"
+
+[[assets]]
+key = "SPCXx"
+chain = "solana"
+mint = "Xs3oZwbHvqis4NYcf4YKWmEia2eC84wSiVrcYcTqpH8"
+display_symbol = "SPCXx"
+issuer = "Backed"
+product_kind = "wrapper"
+underlying_ref = "SpaceX"
+role = "destination"
+
+[[routes]]
+id = "spacex_spcxx_mint_pair"
+source = "SPACEX"
+destination = "SPCXx"
+mechanism = "swap_pair"
+measurement = { unit = "token_native", unit_asset = "SPACEX", measured_leg = "source", attribution = "mint_pair_swaps", denominator = { type = "supply_snapshot", asset = "SPACEX", as_of = "2026-06-11" } }
+
+[[route_evidence]]
+route_id = "spacex_spcxx_mint_pair"
+documented = "issuer_named"
+technically_executable = "permissionless"
+observed_on_chain = "yes"
+restrictions = []
+linkage_class = "mint_pair_match"
+notes = "Observed mint-pair traffic is route traffic. It is not renamed issuer conversion volume unless evidence identifies issuer conversion."
+
+[[coverage_declared]]
+kind = "off_chain_venue"
+scope = "SPCXx"
+reason = "CEX tape not present in this frozen extract"
+
+[[coverage_declared]]
+kind = "historical_depth"
+scope = "SPACEX"
+reason = "Historical depth was not reconstructable for the event window"
+
+[[coverage_declared]]
+kind = "trader_intent"
+scope = "spacex_spcxx_mint_pair"
+reason = "On-chain swaps establish state transitions, not trader intent"
+
+[[coverage_declared]]
+kind = "actor_linkage"
+scope = "spacex_spcxx_mint_pair"
+reason = "Wallet clustering / investor identity linkage is out of scope for this extract"
+
+[response]
+baseline_window = "baseline"
+
+[data_provenance]
+source_description = "Frozen remaps of experiments/liquidity_migration/data/processed/{conduit_daily,panel_daily}.csv plus Helius absolute SPACEX supply 8742.556 as_of 2026-06-11 (claim_gate / data_provenance). Conduit matches mint pair, not a single pool. Flow window is full_flow_period 2026-06-12→2026-08-06."
+extracted_at = "2026-08-07T00:00:00Z"
+
+[inputs]
+flows = "data/flows_daily.csv"
+supply = "data/supply_daily.csv"
+response = "data/response_daily.csv"

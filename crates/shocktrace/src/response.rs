@@ -36,8 +36,11 @@ pub struct ResponseSeriesSummary {
     pub price_return: Option<Decimal>,
     pub first_price: Option<Decimal>,
     pub last_price: Option<Decimal>,
-    /// Median in-window volume / median baseline-window volume.
-    /// `None` if either median is unavailable.
+    /// Median in-window volume / median of the configured baseline window's volumes.
+    ///
+    /// When the summarized window *is* the baseline window, the engine leaves this
+    /// `None` (self-normalization is definitionally 1 and not informative).
+    /// `None` also when either median is unavailable or baseline median ≤ 0.
     pub baseline_normalized_volume: Option<Decimal>,
     pub window_median_volume: Option<Decimal>,
     pub baseline_median_volume: Option<Decimal>,
@@ -163,6 +166,7 @@ mod tests {
             name: "event".into(),
             start: NaiveDate::from_str("2026-06-12").unwrap(),
             end: NaiveDate::from_str("2026-06-14").unwrap(),
+            applies_to: crate::event::default_window_applies_to(),
         }
     }
 
