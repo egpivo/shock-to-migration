@@ -1,0 +1,22 @@
+[package]
+name = "fetch-gold-oil"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Freeze helper: download Yahoo Finance daily OHLCV into shocktrace response CSVs"
+publish = false
+
+[[bin]]
+name = "fetch-gold-oil"
+path = "src/main.rs"
+
+[dependencies]
+chrono = { workspace = true }
+chrono-tz = "0.10"
+clap = { workspace = true }
+csv = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+ureq = { version = "2.12", default-features = false, features = ["tls"] }

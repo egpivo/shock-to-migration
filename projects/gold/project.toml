@@ -1,53 +1,72 @@
 schema_version = 3
 project_id = "gold"
-name = "Gold response-only (frozen sample; not historical COMEX fact)"
+name = "Gold response to Israel-Iran strikes (13 Jun 2025) via GLD ETF"
 
+# Shared event definition: identical [event] id/name/timestamp across
+# projects/gold/project.toml and projects/oil/project.toml. See
+# .local/docs/GOLD_OIL_CASE.md for candidate-selection reasoning and
+# .local/docs/GOLD_OIL_EVENT.md / SOURCE.md for citations.
 [event]
-id = "gold_shock_frozen"
-name = "Frozen gold shock window (research-selected outside engine)"
-timestamp = "2026-06-12T14:00:00Z"
+id = "iran_israel_strikes_2025_06_13"
+name = "Israel launches Operation Rising Lion strikes on Iran"
+timestamp = "2025-06-13T00:00:00Z"
 
 [[windows]]
 name = "baseline"
-start = "2026-06-01"
-end = "2026-06-05"
+start = "2024-06-13"
+end = "2025-06-12"
+applies_to = ["response"]
 
 [[windows]]
-name = "event"
-start = "2026-06-12"
-end = "2026-06-16"
+name = "event_week"
+start = "2025-06-13"
+end = "2025-06-20"
+applies_to = ["response"]
+
+[[windows]]
+name = "post_event_40d"
+start = "2025-06-13"
+end = "2025-08-12"
+applies_to = ["response"]
 
 [[assets]]
-key = "GC"
+key = "GLD"
 chain = "tradfi"
-venue = "COMEX"
-instrument_id = "GC_FRONT_FROZEN_SAMPLE"
-display_symbol = "GC"
-product_kind = "unknown"
-underlying_ref = "gold_exposure_not_canonical"
+venue = "NYSEARCA"
+instrument_id = "US78463V1070"
+display_symbol = "GLD"
+issuer = "State Street Global Advisors (SPDR Gold Trust)"
+product_kind = "etf_trust"
+underlying_ref = "gold_bullion_exposure"
 role = "primary"
+session_calendar = "exchange_sessions"
 
 [[coverage_declared]]
 kind = "route_attribution"
 scope = "gold"
-reason = "No linked capital-migration route is declared or observable in this project"
+reason = "No linked capital-migration route is declared or observable in this project; this is a response-only project"
 
 [[coverage_declared]]
 kind = "trader_intent"
-scope = "GC"
+scope = "GLD"
 reason = "Price/volume series do not identify trader intent or source of capital"
 
 [[coverage_declared]]
 kind = "actor_linkage"
-scope = "GC"
+scope = "GLD"
 reason = "Cross-market investor identity is not observed"
+
+[[coverage_declared]]
+kind = "historical_depth"
+scope = "GLD"
+reason = "Only daily close price and daily share volume are captured; intraday depth/quotes are not reconstructable after the fact"
 
 [response]
 baseline_window = "baseline"
 
 [data_provenance]
-source_description = "Frozen local CSV sample for architecture/generalization. Explicitly not a historical COMEX tape or live API extract."
-extracted_at = "2026-08-10T00:00:00Z"
+source_description = "Daily close price and volume for GLD (SPDR Gold Shares, NYSE Arca, ISIN US78463V1070) downloaded from the public Yahoo Finance chart API (query2.finance.yahoo.com/v8/finance/chart/GLD) via `cargo run -p fetch-gold-oil`. GLD is used instead of COMEX GC continuous futures because GC=F's volume field from this same endpoint is not credible for this window (median ~430 'contracts'/day with several zero-volume days) -- see .local/docs/GOLD_OIL_CASE.md for the full data-quality comparison. Gold and oil therefore use two different instrument types (ETF vs. future), documented explicitly rather than mixed silently."
+extracted_at = "2026-08-10T07:35:00Z"
 
 [inputs]
 response = "data/response_daily.csv"

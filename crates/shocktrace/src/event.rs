@@ -1,6 +1,6 @@
 //! Dated shocks and named analysis windows.
 
-use chrono::{DateTime, NaiveDate, Utc};
+use chrono::{DateTime, Datelike, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -30,6 +30,21 @@ pub struct EventWindow {
     pub applies_to: Vec<WindowUse>,
 }
 
+/// How expected observation days are counted inside a window for coverage.
+///
+/// - [`SessionCalendar::Continuous`]: every calendar day in `[start, end]`
+///   (appropriate for 24/7 on-chain series).
+/// - [`SessionCalendar::ExchangeSessions`]: Monday–Friday only. Weekends are
+///   not gaps. Exchange holidays may still appear as gaps until an explicit
+///   holiday calendar is supplied.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum SessionCalendar {
+    #[default]
+    Continuous,
+    ExchangeSessions,
+}
+
 impl EventWindow {
     pub fn contains(&self, day: NaiveDate) -> bool {
         day >= self.start && day <= self.end
@@ -57,6 +72,54 @@ impl EventWindow {
             ));
         }
         Ok(())
+    }
+
+    /// Inclusive calendar length (always continuous days).
+    pub fn calendar_day_count(&self) -> usize {
+        (self.end - self.start).num_days() as usize + 1
+    }
+
+    /// Expected observation slots for coverage under `calendar`.
+    pub fn expected_session_count(&self, calendar: SessionCalendar) -> usize {
+        match calendar {
+            SessionCalendar::Continuous => self.calendar_day_count(),
+            SessionCalendar::ExchangeSessions => self.weekday_count(),
+        }
+    }
+
+    /// Count of Mondays–Fridays in the inclusive range.
+    pub fn weekday_count(&self) -> usize {
+        let mut n = 0usize;
+        let mut d = self.start;
+        while d <= self.end {
+            let wd = d.weekday().num_days_from_monday();
+            if wd < 5 {
+                n += 1;
+            }
+            d = d.succ_opt().expect("date range");
+        }
+        n
+    }
+
+    /// Days that count as expected sessions but have no observation.
+    pub fn missing_sessions(
+        &self,
+        calendar: SessionCalendar,
+        observed: &std::collections::BTreeSet<NaiveDate>,
+    ) -> Vec<NaiveDate> {
+        let mut missing = Vec::new();
+        let mut d = self.start;
+        while d <= self.end {
+            let expected = match calendar {
+                SessionCalendar::Continuous => true,
+                SessionCalendar::ExchangeSessions => d.weekday().num_days_from_monday() < 5,
+            };
+            if expected && !observed.contains(&d) {
+                missing.push(d);
+            }
+            d = d.succ_opt().expect("date range");
+        }
+        missing
     }
 }
 

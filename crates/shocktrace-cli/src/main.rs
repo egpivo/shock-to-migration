@@ -6,10 +6,15 @@ use std::process::ExitCode;
 
 use clap::{Parser, Subcommand, ValueEnum};
 use shocktrace::load_project;
+use shocktrace::measure::{
+    format_divergence_summary, format_shock_report_summary, load_asset_shock_report,
+    load_divergence_summary,
+};
 use shocktrace::report::{
     analyze_project, compare_projects, flows_view, format_compare_table, format_flows_summary,
     format_respond_summary, format_summary, respond_view,
 };
+use shocktrace::AssetKey;
 
 #[derive(Parser, Debug)]
 #[command(name = "shocktrace")]
@@ -46,6 +51,48 @@ enum Commands {
     /// Compare evidence-ladder states across projects (no migration verdict).
     Compare {
         projects: Vec<PathBuf>,
+        #[arg(long, value_enum, default_value_t = OutputFormat::Summary)]
+        format: OutputFormat,
+    },
+    /// Reusable market measurement tools (shock score, divergence).
+    /// Not causal inference; see .local/docs/MEASUREMENT_CONTRACT.md.
+    Measure {
+        #[command(subcommand)]
+        command: MeasureCommands,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum MeasureCommands {
+    /// Event-day z-score + horizon returns + activity anomaly for one asset.
+    Shock {
+        project: PathBuf,
+        #[arg(long)]
+        asset: String,
+        /// Defaults to the first `applies_to = ["response", ...]` window
+        /// that isn't the baseline window.
+        #[arg(long = "event-window")]
+        event_window: Option<String>,
+        /// Defaults to `[response].baseline_window` from project.toml.
+        #[arg(long = "baseline-window")]
+        baseline_window: Option<String>,
+        /// Observed trading sessions after event start (not calendar days).
+        #[arg(long, value_delimiter = ',', default_value = "1,3,5,20")]
+        horizons: Vec<usize>,
+        #[arg(long, value_enum, default_value_t = OutputFormat::Summary)]
+        format: OutputFormat,
+    },
+    /// D_t = r_A - r_B on matched trading days, z-scored vs baseline.
+    Divergence {
+        project: PathBuf,
+        #[arg(long = "asset-a")]
+        asset_a: String,
+        #[arg(long = "asset-b")]
+        asset_b: String,
+        #[arg(long = "event-window")]
+        event_window: Option<String>,
+        #[arg(long = "baseline-window")]
+        baseline_window: Option<String>,
         #[arg(long, value_enum, default_value_t = OutputFormat::Summary)]
         format: OutputFormat,
     },
@@ -125,6 +172,58 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             match format {
                 OutputFormat::Summary => println!("{}", format_compare_table(&rows)),
                 OutputFormat::Json => println!("{}", serde_json::to_string_pretty(&rows)?),
+            }
+        }
+        Commands::Measure { command } => run_measure(command)?,
+    }
+    Ok(())
+}
+
+fn run_measure(command: MeasureCommands) -> Result<(), Box<dyn std::error::Error>> {
+    match command {
+        MeasureCommands::Shock {
+            project,
+            asset,
+            event_window,
+            baseline_window,
+            horizons,
+            format,
+        } => {
+            let cfg = load_project(&project)?;
+            let asset_key = AssetKey::new(asset.clone());
+            let report = load_asset_shock_report(
+                &cfg,
+                &asset_key,
+                event_window.as_deref(),
+                baseline_window.as_deref(),
+                &horizons,
+            )?;
+            match format {
+                OutputFormat::Summary => {
+                    println!("{}", format_shock_report_summary(&asset, &report))
+                }
+                OutputFormat::Json => println!("{}", serde_json::to_string_pretty(&report)?),
+            }
+        }
+        MeasureCommands::Divergence {
+            project,
+            asset_a,
+            asset_b,
+            event_window,
+            baseline_window,
+            format,
+        } => {
+            let cfg = load_project(&project)?;
+            let summary = load_divergence_summary(
+                &cfg,
+                &AssetKey::new(asset_a),
+                &AssetKey::new(asset_b),
+                event_window.as_deref(),
+                baseline_window.as_deref(),
+            )?;
+            match format {
+                OutputFormat::Summary => println!("{}", format_divergence_summary(&summary)),
+                OutputFormat::Json => println!("{}", serde_json::to_string_pretty(&summary)?),
             }
         }
     }

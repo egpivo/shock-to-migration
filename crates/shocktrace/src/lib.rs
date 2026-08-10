@@ -13,6 +13,7 @@ pub mod evidence;
 pub mod flow;
 pub mod identity;
 pub mod ingest;
+pub mod measure;
 pub mod observe;
 pub mod project;
 pub mod provenance;
@@ -21,8 +22,11 @@ pub mod response;
 pub mod route;
 
 pub use control::{ControlAsset, ControlRelation};
-pub use coverage::{AnalysisSection, CoverageGap, EvidenceBoundary, GapSource, MissingKind};
-pub use event::{default_window_applies_to, Event, EventWindow, WindowUse};
+pub use coverage::{
+    format_evidence_boundary, AnalysisSection, CoverageGap, EvidenceBoundary, GapSource,
+    MissingKind,
+};
+pub use event::{default_window_applies_to, Event, EventWindow, SessionCalendar, WindowUse};
 pub use evidence::EvidenceSection;
 pub use flow::{
     account_directional_flows, AttributionMethod, DirectionalFlowObservation, FlowSeriesSummary,
@@ -30,6 +34,14 @@ pub use flow::{
 };
 pub use identity::{
     AssetId, AssetKey, AssetLocator, CanonicalAsset, ChainId, ProductKind, VenueId,
+};
+pub use measure::{
+    account_activity_anomaly, account_divergence, account_shock_score,
+    cumulative_return_from_event, daily_returns, format_divergence_summary,
+    format_shock_report_summary, load_asset_shock_report, load_divergence_summary, ActivityAnomaly,
+    AssetShockReport, DailyReturn, DivergenceSummary, HorizonReturn, HorizonReturns, MeasureError,
+    MeasureProjectError, ShockScore, ZScoreUnavailable, ADEQUATE_BASELINE_OBSERVATIONS,
+    MIN_BASELINE_OBSERVATIONS,
 };
 pub use project::{
     load_project, validate_project, DataProvenanceMeta, ProjectConfig, ProjectError, ResponseConfig,

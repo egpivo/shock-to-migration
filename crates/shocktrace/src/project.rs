@@ -10,7 +10,7 @@ use thiserror::Error;
 
 use crate::control::{ControlAsset, ControlRelation};
 use crate::coverage::{CoverageGap, MissingKind};
-use crate::event::{default_window_applies_to, Event, EventWindow, WindowUse};
+use crate::event::{default_window_applies_to, Event, EventWindow, SessionCalendar, WindowUse};
 use crate::flow::AttributionMethod;
 use crate::identity::{AssetId, AssetKey, AssetLocator, CanonicalAsset, ChainId, ProductKind};
 use crate::route::{
@@ -128,6 +128,9 @@ struct RawAsset {
     product_kind: String,
     underlying_ref: Option<String>,
     role: Option<String>,
+    /// `continuous` (default) or `exchange_sessions`. See [`SessionCalendar`].
+    #[serde(default)]
+    session_calendar: Option<String>,
 }
 
 fn default_product_kind() -> String {
@@ -292,6 +295,7 @@ fn map_raw(raw: RawProject, root: PathBuf) -> Result<ProjectConfig, ProjectError
                 product_kind: parse_product_kind(&a.product_kind),
                 underlying_ref: a.underlying_ref,
                 role: a.role,
+                session_calendar: parse_session_calendar(a.session_calendar.as_deref())?,
             })
         })
         .collect::<Result<Vec<_>, ProjectError>>()?;
@@ -708,6 +712,16 @@ fn parse_product_kind(s: &str) -> ProductKind {
     }
 }
 
+fn parse_session_calendar(raw: Option<&str>) -> Result<SessionCalendar, ProjectError> {
+    match raw {
+        None | Some("continuous") => Ok(SessionCalendar::Continuous),
+        Some("exchange_sessions") => Ok(SessionCalendar::ExchangeSessions),
+        Some(other) => Err(ProjectError::Validation(format!(
+            "unrecognized session_calendar '{other}' (expected continuous|exchange_sessions)"
+        ))),
+    }
+}
+
 fn parse_mechanism(s: &str) -> Result<RouteMechanism, ProjectError> {
     match s {
         "swap_pair" => Ok(RouteMechanism::SwapPair),
@@ -858,6 +872,7 @@ mod tests {
             product_kind: ProductKind::Unknown,
             underlying_ref: Some("gold".into()),
             role: None,
+            session_calendar: SessionCalendar::Continuous,
         };
         let b = CanonicalAsset {
             key: AssetKey::new("g2"),
@@ -873,6 +888,7 @@ mod tests {
             product_kind: ProductKind::Unknown,
             underlying_ref: Some("gold".into()),
             role: None,
+            session_calendar: SessionCalendar::ExchangeSessions,
         };
         assert_ne!(a.id, b.id);
     }

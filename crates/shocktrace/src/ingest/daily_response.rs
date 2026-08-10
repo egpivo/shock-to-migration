@@ -180,12 +180,17 @@ mod tests {
     use std::fs;
 
     fn write_csv(body: &str) -> std::path::PathBuf {
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static N: AtomicU64 = AtomicU64::new(0);
+        let n = N.fetch_add(1, Ordering::Relaxed);
         let dir = std::env::temp_dir().join(format!(
-            "shocktrace-response-ingest-{}",
+            "shocktrace-response-ingest-{}-{:?}-{}",
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
-                .as_nanos()
+                .as_nanos(),
+            std::thread::current().id(),
+            n
         ));
         fs::create_dir_all(&dir).unwrap();
         let path = dir.join("response.csv");

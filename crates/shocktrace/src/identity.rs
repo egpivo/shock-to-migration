@@ -88,6 +88,9 @@ pub struct CanonicalAsset {
     /// Economic exposure label; not identity.
     pub underlying_ref: Option<String>,
     pub role: Option<String>,
+    /// How coverage denominators are counted for this asset's response series.
+    #[serde(default)]
+    pub session_calendar: crate::event::SessionCalendar,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

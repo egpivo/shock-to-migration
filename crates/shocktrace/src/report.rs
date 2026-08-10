@@ -18,6 +18,7 @@ use crate::flow::{
     account_directional_flows, inclusive_day_count, DirectionalFlowObservation, FlowSeriesSummary,
     FlowUnit,
 };
+use crate::identity::AssetKey;
 use crate::ingest::daily_flows::load_daily_flow_rows;
 use crate::ingest::daily_response::load_daily_response;
 use crate::ingest::daily_supply::{load_daily_supply, supply_on};
@@ -133,8 +134,18 @@ fn compute_market_response(
         .find(|w| w.name == resp_cfg.baseline_window)
         .expect("validated baseline_window");
 
+    let calendar_by_asset: BTreeMap<&AssetKey, crate::event::SessionCalendar> = cfg
+        .assets
+        .iter()
+        .map(|a| (&a.key, a.session_calendar))
+        .collect();
+
     let mut summaries = Vec::new();
     for (asset_key, series) in &by_asset {
+        let calendar = calendar_by_asset
+            .get(asset_key)
+            .copied()
+            .unwrap_or_default();
         let baseline: Vec<_> = series
             .iter()
             .filter(|o| baseline_window.contains(o.day))
@@ -145,6 +156,7 @@ fn compute_market_response(
             if !window.applies_to_response() {
                 continue;
             }
+            let expected = window.expected_session_count(calendar);
             let in_window: Vec<_> = series
                 .iter()
                 .filter(|o| window.contains(o.day))
@@ -156,14 +168,15 @@ fn compute_market_response(
                     MissingKind::Other("response_coverage".into()),
                     format!("{}@{}", asset_key, window.name),
                     format!(
-                        "no response observations in window '{}' (0 of {} days)",
+                        "no response observations in window '{}' (0 of {} {} sessions)",
                         window.name,
-                        inclusive_day_count(window)
+                        expected,
+                        session_label(calendar)
                     ),
                 ));
                 continue;
             }
-            let mut summary = account_market_response(in_window, window, &baseline)?;
+            let mut summary = account_market_response(in_window, window, &baseline, calendar)?;
             // Self-normalization against the same window is definitionally 1 — omit.
             if window.name == resp_cfg.baseline_window {
                 summary.baseline_normalized_volume = None;
@@ -174,9 +187,10 @@ fn compute_market_response(
                     MissingKind::Other("response_coverage".into()),
                     format!("{}@{}", asset_key, window.name),
                     format!(
-                        "{} of {} days missing in window '{}'",
+                        "{} of {} {} sessions missing in window '{}'",
                         summary.window_days - summary.observed_days,
                         summary.window_days,
+                        session_label(calendar),
                         window.name
                     ),
                 ));
@@ -607,18 +621,14 @@ fn format_flow_rows(data: &[FlowSeriesSummary]) -> Vec<String> {
 }
 
 fn format_boundary_block(boundary: &EvidenceBoundary) -> String {
-    let mut lines = vec!["evidence boundary:".into()];
-    if boundary.missing.is_empty() {
-        lines.push("  (no coverage gaps recorded)".into());
-    } else {
-        for gap in &boundary.missing {
-            lines.push(format!("  - {}/{}: {}", gap.kind, gap.scope, gap.reason));
-        }
+    crate::coverage::format_evidence_boundary(boundary)
+}
+
+fn session_label(calendar: crate::event::SessionCalendar) -> &'static str {
+    match calendar {
+        crate::event::SessionCalendar::Continuous => "calendar",
+        crate::event::SessionCalendar::ExchangeSessions => "weekday",
     }
-    for a in &boundary.assumptions {
-        lines.push(format!("  assumption: {a}"));
-    }
-    lines.join("\n")
 }
 
 fn format_section<T, F>(name: &str, section: &EvidenceSection<T>, fmt: F) -> String
@@ -849,14 +859,23 @@ mod tests {
     use std::str::FromStr;
     use std::{fs, path::PathBuf};
 
-    fn write_temp(project_toml: &str, files: &[(&str, &str)]) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!(
-            "shocktrace-test-{}",
+    fn unique_temp_dir(prefix: &str) -> PathBuf {
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static N: AtomicU64 = AtomicU64::new(0);
+        let n = N.fetch_add(1, Ordering::Relaxed);
+        std::env::temp_dir().join(format!(
+            "{prefix}-{}-{:?}-{}",
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
-                .as_nanos()
-        ));
+                .as_nanos(),
+            std::thread::current().id(),
+            n
+        ))
+    }
+
+    fn write_temp(project_toml: &str, files: &[(&str, &str)]) -> PathBuf {
+        let dir = unique_temp_dir("shocktrace-test");
         fs::create_dir_all(dir.join("data")).unwrap();
         fs::write(dir.join("project.toml"), project_toml).unwrap();
         for (rel, body) in files {

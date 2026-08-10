@@ -54,6 +54,8 @@ pub enum GapSource {
 pub enum AnalysisSection {
     Response,
     Flow,
+    /// On-demand `measure` tools (shock / divergence / horizons).
+    Measure,
     #[default]
     General,
 }
@@ -114,4 +116,20 @@ impl EvidenceBoundary {
     pub fn assume(&mut self, statement: impl Into<String>) {
         self.assumptions.push(statement.into());
     }
+}
+
+/// Shared text block used by `respond` / `flows` / `measure` summaries.
+pub fn format_evidence_boundary(boundary: &EvidenceBoundary) -> String {
+    let mut lines = vec!["evidence boundary:".into()];
+    if boundary.missing.is_empty() {
+        lines.push("  (no coverage gaps recorded)".into());
+    } else {
+        for gap in &boundary.missing {
+            lines.push(format!("  - {}/{}: {}", gap.kind, gap.scope, gap.reason));
+        }
+    }
+    for a in &boundary.assumptions {
+        lines.push(format!("  assumption: {a}"));
+    }
+    lines.join("\n")
 }

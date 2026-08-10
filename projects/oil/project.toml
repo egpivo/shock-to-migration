@@ -1,36 +1,50 @@
 schema_version = 3
 project_id = "oil"
-name = "Oil response-only (frozen sample; not historical NYMEX fact)"
+name = "Oil response to Israel-Iran strikes (13 Jun 2025) via NYMEX CL continuous"
 
+# Shared event definition: identical [event] id/name/timestamp across
+# projects/gold/project.toml and projects/oil/project.toml. See
+# .local/docs/GOLD_OIL_CASE.md for candidate-selection reasoning and
+# .local/docs/GOLD_OIL_EVENT.md / SOURCE.md for citations.
 [event]
-id = "oil_shock_frozen"
-name = "Frozen oil shock window (research-selected outside engine)"
-timestamp = "2026-06-12T14:00:00Z"
+id = "iran_israel_strikes_2025_06_13"
+name = "Israel launches Operation Rising Lion strikes on Iran"
+timestamp = "2025-06-13T00:00:00Z"
 
 [[windows]]
 name = "baseline"
-start = "2026-06-01"
-end = "2026-06-05"
+start = "2024-06-13"
+end = "2025-06-12"
+applies_to = ["response"]
 
 [[windows]]
-name = "event"
-start = "2026-06-12"
-end = "2026-06-16"
+name = "event_week"
+start = "2025-06-13"
+end = "2025-06-20"
+applies_to = ["response"]
+
+[[windows]]
+name = "post_event_40d"
+start = "2025-06-13"
+end = "2025-08-12"
+applies_to = ["response"]
 
 [[assets]]
 key = "CL"
 chain = "tradfi"
 venue = "NYMEX"
-instrument_id = "CL_FRONT_FROZEN_SAMPLE"
-display_symbol = "CL"
-product_kind = "unknown"
-underlying_ref = "oil_exposure_not_canonical"
+instrument_id = "CL"
+display_symbol = "CL=F"
+issuer = "CME Group"
+product_kind = "futures_continuous"
+underlying_ref = "wti_crude_exposure"
 role = "primary"
+session_calendar = "exchange_sessions"
 
 [[coverage_declared]]
 kind = "route_attribution"
 scope = "oil"
-reason = "No linked capital-migration route is declared or observable in this project"
+reason = "No linked capital-migration route is declared or observable in this project; this is a response-only project"
 
 [[coverage_declared]]
 kind = "trader_intent"
@@ -42,12 +56,22 @@ kind = "actor_linkage"
 scope = "CL"
 reason = "Cross-market investor identity is not observed"
 
+[[coverage_declared]]
+kind = "historical_depth"
+scope = "CL"
+reason = "Only daily settle price and daily contract volume are captured; intraday depth/quotes are not reconstructable after the fact"
+
+[[coverage_declared]]
+kind = "off_chain_venue"
+scope = "CL"
+reason = "instrument_id 'CL' denotes the CME/NYMEX continuous front-month roll, not a single fixed contract month; roll-day price/volume discontinuities are not separately flagged in the frozen series"
+
 [response]
 baseline_window = "baseline"
 
 [data_provenance]
-source_description = "Frozen local CSV sample for architecture/generalization. Explicitly not a historical NYMEX tape or live API extract."
-extracted_at = "2026-08-10T00:00:00Z"
+source_description = "Daily close price and volume for CL=F (NYMEX WTI Crude Oil, continuous front-month future) downloaded from the public Yahoo Finance chart API (query2.finance.yahoo.com/v8/finance/chart/CL=F) via `cargo run -p fetch-gold-oil`. Spot-checked against Reuters/CNBC same-day reporting: WTI settled 13 Jun 2025 at $72.98/bbl, up 7.26%, which matches this frozen series exactly (68.04 -> 72.98) -- see .local/docs/GOLD_OIL_CASE.md."
+extracted_at = "2026-08-10T07:35:30Z"
 
 [inputs]
 response = "data/response_daily.csv"
